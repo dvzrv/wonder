@@ -33,6 +33,7 @@
 #include "scoreplayer_config.h"
 #include "wonder_path.h"
 
+#include <unistd.h>
 #include <iostream>
 #include <sstream>
 #include <fstream>

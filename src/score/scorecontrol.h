@@ -33,6 +33,7 @@
 #include <set>
 #include <vector>
 
+#include <unistd.h>
 #include "score_line.h"
 #include "file_io.h"
 
