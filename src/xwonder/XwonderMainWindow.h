@@ -158,6 +158,7 @@ private slots:
         // cwonder project  
         void newProjectWithScore();
         void newProjectWithoutScore();
+		void newAddProjectScore();
         void newProject();
         void openProject();
         bool save();
@@ -247,6 +248,7 @@ private:
         // project/file related
         QAction* newProjectWithScoreAct;
         QAction* newProjectWithoutScoreAct;
+		QAction* newAddProjectScoreAct;
         QAction* openProjectAct;
         QAction* saveAct;
         QAction* saveAsAct;

@@ -3,6 +3,7 @@
  *  WONDER - Wave field synthesis Of New Dimensions of Electronic music in Realtime  *
  *  http://swonder.sourceforge.net                                                   *
  *                                                                                   *
+ *  Torben Hohn, Eddie Mond, Marije Baalman                                          *
  *                                                                                   *
  *  Technische Universität Berlin, Germany                                           *
  *  Audio Communication Group                                                        *
@@ -33,14 +34,16 @@ unsigned int DelayCoeff::getSampleDelayRounded( float preDelay )
     if( delay + preDelay < 0 )
         return 0;
     else
-        return ( unsigned int ) ( ( delay + preDelay ) * ( twonderConf->sampleRate / twonderConf->soundSpeed ) + 0.5 );
+        return ( unsigned int ) ( ( delay + preDelay ) * ( twonderConf->sampleRate / twonderConf->soundSpeed ) + 0.5 ); 
+		/// NOTE: why is there a 0.5 here?? ensuring it is always >= 1?
+		/// NOTE: original source uses lrintf (is that an optimized cast?)
 }
 
 
 float DelayCoeff::getSampleDelay( float preDelay )
 {
     if( delay + preDelay < 0 )
-        return 0;
+        return 0.;
     else
         return  ( delay + preDelay ) * ( twonderConf->sampleRate / twonderConf->soundSpeed );
 }

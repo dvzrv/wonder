@@ -55,12 +55,10 @@ public:
 protected:
     float* samples;
     size_t size;
-    int id;
 
-    static fftwf_plan  fft_plan;
-    static fftwf_plan ifft_plan;
-    static bool plansMade;
-    static int  instanceCounter;
+    fftwf_plan   fft_plan;
+    fftwf_plan  ifft_plan;
+    bool        plansMade;
 
 private:
     void /*FftwBuf&*/ operator = ( const FftwBuf& other );

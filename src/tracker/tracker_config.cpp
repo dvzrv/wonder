@@ -64,6 +64,7 @@ TrackerConfig::TrackerConfig( int argc, char** argv )
     trackerType        = PTRACKER;
     trackerName        = "ptracker";
     omit               = 0;
+    wait               = 1;
 
     latencyTestMode     = false;
     writeLatencyFile    = false;
@@ -111,11 +112,12 @@ void TrackerConfig::parse_args( int argc, char** argv )
             { "testpoints",    required_argument, 0, 'p' },
             { "writetestfile", no_argument,       0, 'f' },
             { "testfile",      no_argument,       0, 'n' },
+            { "slowdown",      required_argument, 0, 's' },
             { "help",          no_argument,       0, 'h' },
             { 0 }
         };
 
-        c = getopt_long( argc, argv, "c:o:vm:lp:fn:h", long_options, &option_index );
+        c = getopt_long( argc, argv, "c:o:vm:lp:fn:s:h", long_options, &option_index );
         if( c == -1 )
             break;
 
@@ -163,6 +165,15 @@ void TrackerConfig::parse_args( int argc, char** argv )
                 latencyTestFileName = strdup( optarg );
                 break;
 
+            case 's':
+                wait = atoi( optarg );
+                if( wait < 0 )
+                {
+                    cerr << "invalid value for slowing down tracker by uwait(arg), setting it to 1" << endl;
+                    wait = 1 ;
+                }
+                break;
+
             case 'h':
                 printf ("\ntracker's commandline arguments:\n"         
                         "--configfile,    -c ( path to the fwonder config file, which should be used )\n"
@@ -173,6 +184,7 @@ void TrackerConfig::parse_args( int argc, char** argv )
                         "--testpoints     -p ( how many measurements the latency test should do )\n"
                         "--writetestfile  -f ( write results of latency test to file )\n"
                         "--testfile       -n ( where the latency test data should be saved )\n"
+                        "--slowdown       -s ( slow down (i)tracker-app by uwait(arg), default is 1 )\n"
                         "--help,          -h \n\n");       
                 exit( EXIT_SUCCESS );
 

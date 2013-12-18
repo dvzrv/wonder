@@ -1,15 +1,22 @@
 ========== WONDER MANUAL ==========
+IMPORTANT:
+THIS IS NOT THE CURRENT MANUAL! IT IS WORK IN PROGRESS AND SHOULD NOT BE USED FOR THE CURRENT VERSION OF WONDER!
+THIS MANUAL IS NOT UP-TO-DATE AT ALL! YOU WILL FIND INFORMATION THAT IS WRONG, OUTDATED OR
+ONLY VALID FOR PREVIOUS VERSIONS. PLEASE WAIT FOR THE ACTUAL MANUAL.
+
 
 This is the WONDER manual. It should guide you when using WONDER and should be used as a reference for 
 information regarding configuring the WONDER system. For information on installing WONDER please
 refer to the file "Install.txt", which should be found in the same directory this file is located in.
 
-Information on the OSC messages of each module and on the commandline arguments of each module can be found in
-the file "OSC_and_Commandline_Overview.ods".
-Information on the configuration files of each module can be found in the file "Configurationfiles_Overview.ods".
+Any references to "the svn directory" refer to the main directory of the package if you downloaded the source as a tarball from sourceforge.
+
+Information on the OSC messages of each module and on the commandline arguments of each module can be found in the file "OSC_and_Commandline_Overview.pdf".
+Information on the configuration files of each module can be found in the file "Configurationfiles_Overview.pdf".
 
 ===== QUICKSTART =====
 
+See Install.txt for installation information.
 
 ===== OVERVIEW =====
 

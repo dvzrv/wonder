@@ -52,122 +52,16 @@ ImpulseResponseChannel::~ImpulseResponseChannel()
 
 FftwBuf& ImpulseResponseChannel::addBuffer()
 {
-    //FftwBuf* buffer = new FftwBuf( 2 * IRPartitionSize );
-    //push_back( buffer );
-    //return *buffer;
-    
     push_back( new FftwBuf( 2 * IRPartitionSize ) );
     return *back();
 }
 
 
-ImpulseResponseChannel::ImpulseResponseChannel( const ImpulseResponseChannel& other )
-{
-    // just preventing copying
-}
-
-
-void /*ImpulseResponseChannel&*/ ImpulseResponseChannel::operator = ( const ImpulseResponseChannel& other )
-{
-    // just preventing copying
-}
-
-
-
-
-
-
-ImpulseResponse::ImpulseResponse( string fileName, size_t IRPartitionSize, size_t maxNoPartitions ) : xPos( 0 ), yPos( 0 ), IRPartitionSize( IRPartitionSize ), noPartitions( 0 ) 
+ImpulseResponse::ImpulseResponse( string fileName, size_t IRPartitionSize, size_t maxNoPartitions, int fadeInPartition,
+                                  int fadeInLength, IRType type ) 
+                                : xPos( 0 ), yPos( 0 ), IRPartitionSize( IRPartitionSize ), noPartitions( 0 ), type( type )
 {
     killed = true;
-    inUse  = false;
-    
-    SndfileHandle file( fileName.c_str() );
-
-    firstPart = 0;
-
-    noChannels = file.channels();
-
-    if( noChannels == 0 )
-    {
-        cerr << "ERROR! IR: " << fileName << " -> number of channels " << noChannels << endl;
-	return;
-    }
-
-    for( int i = 0; i < noChannels; ++i )
-	channels.push_back( new ImpulseResponseChannel( IRPartitionSize ) );
-
-    if( fwonderConf->IRVerbose )
-        cout << "IR: " << fileName << " -> number of channels " << noChannels << endl;
-    
-    float inputMultiChannelDeinterleaveBuffer[ noChannels * IRPartitionSize  ];
-
-    bool stop = false;
-
-    while( ! stop && ( noPartitions < ( int ) maxNoPartitions ) )
-    {
-        sf_count_t numRead = file.readf( inputMultiChannelDeinterleaveBuffer, IRPartitionSize );
-
-	// XXX:if the next lines are commented out numRead will be zero-padded
-	// until max_partitions is reached otherwise reading is stopped if EOF is reached
-	//if( numRead == 0 ) {
-	//    stop = true;
-	//    break;
-	//}
-        
-	if( numRead != IRPartitionSize )
-        {
-            if( fwonderConf->IRVerbose )
-                cout << "IR: " << fileName << " -> read " << numRead << ": padding" << endl;
-
-	    for( unsigned int i = noChannels * numRead; i < IRPartitionSize * noChannels; ++i )
-		inputMultiChannelDeinterleaveBuffer[ i ] = 0.0;
-	}
-
-
-	for( int i = 0; i < noChannels; ++i )
-        {
-	    FftwBuf& newBuffer  = channels[ i ]->addBuffer();
-	    float*   newSamples = newBuffer.getSamples();
-
-	    // if this is the last partition then do a fade out
-	    if( noPartitions == ( ( int ) maxNoPartitions - 1 ) ) 
-            {
-		float fadeFactor   = 1.0;
-		float fadeStepSize = 1.0 / ( float ) IRPartitionSize;
-		for( unsigned int j = 0; j < IRPartitionSize; ++j )
-                {
-		    newSamples[ j ] = inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] / ( float ) ( 2 * IRPartitionSize) * fadeFactor;
-		    newSamples[ j + IRPartitionSize ] = 0.0;
-		    fadeFactor -= fadeStepSize;
-		}
-	    }
-            else
-            {
-                for( unsigned int j = 0; j < IRPartitionSize; ++j )
-                {
-		    newSamples[ j ] = inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] / ( float ) ( 2 * IRPartitionSize );
-		    newSamples[ j + IRPartitionSize ] = 0.0;
-		}
-	    }
-
-	    newBuffer.fft();
-	}
-
-	++noPartitions;
-    }
-
-    killed = false;
-}
-
-
-//XXX: check use of this constructor, most calls use fadeInPartition = -1 which prevents division by 0 in line 245 which would occurr because of the default value fadeInLength=0
-//      this also prevents any use of the fwonderConf->tailWindow data which obviously should only be used when this is a tail IR, seems to be a HACK
-ImpulseResponse::ImpulseResponse( string fileName, size_t IRPartitionSize, size_t maxNoPartitions, int fadeInPartition, int fadeInLength ) 
-                                : xPos( 0 ), yPos( 0 ), IRPartitionSize( IRPartitionSize ), noPartitions( 0 )
-{
-    killed = true;
-    inUse  = false;
 
     SndfileHandle file( fileName.c_str() );
 
@@ -188,7 +82,7 @@ ImpulseResponse::ImpulseResponse( string fileName, size_t IRPartitionSize, size_
 	channels.push_back( new ImpulseResponseChannel( IRPartitionSize ) );
 
     if( fwonderConf->IRVerbose ) 
-        cout << "IR: " << fileName << " -> number of channels " << noChannels << endl;
+        cout << "Loading IR: " << fileName << " -> number of channels " << noChannels << endl;
     
     float inputMultiChannelDeinterleaveBuffer[ noChannels * IRPartitionSize  ];
 
@@ -223,21 +117,26 @@ ImpulseResponse::ImpulseResponse( string fileName, size_t IRPartitionSize, size_
 	    // if this is the last partition then do a fade out.
 	    if( noPartitions == ( ( int ) maxNoPartitions - 1 ) )
             {
-		float fadeFactor   =  1.0;
-		float fadeStepSize = -1.0 / ( float ) IRPartitionSize;
+		float fadeFactor   = 1.0;
+		float fadeStepSize = 1.0 / ( float ) IRPartitionSize;
 
 		for( unsigned int j = 0; j < IRPartitionSize; ++j ) 
                 {
 		    if( fwonderConf->tailWindow == LINEAR ) 
-                        newSamples[ j ] = inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] / ( float ) ( 2 * IRPartitionSize ) * fadeFactor;
+                        newSamples[ j ] =   inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] 
+                                          / ( float ) ( 2 * IRPartitionSize ) * fadeFactor;
+
                     else if (fwonderConf->tailWindow == NOWIN ) 
-                        newSamples[ j ] = inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] / ( float ) ( 2 * IRPartitionSize );
+                        newSamples[ j ] =   inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] 
+                                          / ( float ) ( 2 * IRPartitionSize );
+
                     else if ( fwonderConf->tailWindow == COS2 ) 
-                        newSamples[ j ] = inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] / ( float ) ( 2 * IRPartitionSize ) * cos( M_PI * ( 1 - fadeFactor ) / 2 );
+                        newSamples[ j ] =   inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ]
+                                          / ( float ) ( 2 * IRPartitionSize ) * cos( M_PI * ( 1 - fadeFactor ) / 2 );
 
 		    newSamples[ j + IRPartitionSize ] = 0.0;
 
-		    fadeFactor += fadeStepSize;
+		    fadeFactor -= fadeStepSize;
 		}
 
 	    }
@@ -251,19 +150,29 @@ ImpulseResponse::ImpulseResponse( string fileName, size_t IRPartitionSize, size_
 		}
 
 	    }
-            else if( noPartitions == fadeInPartition ) // this is the first partition, so do a fade in
+            else if( noPartitions == firstPart ) // this is the first partition, so do a fade in
             {
-		float fadeFactor   = 0.0;
-		float fadeStepSize = 1.0 / ( float ) fadeInLength; //XXX:possible divide by 0 
+		float fadeFactor = 0.0;
+                if ( fadeInLength == 0 )
+                {
+                    fadeInLength = 1;
+                    fadeFactor   = 1.0;
+                }
+		float fadeStepSize = 1.0 / ( float ) fadeInLength; 
 
 		for( unsigned int j = 0; j < IRPartitionSize; ++j )
                 {
 		    if( fwonderConf->tailWindow == LINEAR )
-                        newSamples[ j ] = inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] / ( float ) ( 2 * IRPartitionSize ) * fadeFactor;
+                        newSamples[ j ] =   inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] 
+                                          / ( float ) ( 2 * IRPartitionSize ) * fadeFactor;
+
 		    else if( fwonderConf->tailWindow == NOWIN )
-			newSamples[ j ] = inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] / ( float ) ( 2 * IRPartitionSize );
+			newSamples[ j ] =   inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] 
+                                          / ( float ) ( 2 * IRPartitionSize );
+
 		    else if( fwonderConf->tailWindow == COS2 )
-			newSamples[ j ] = inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] / ( float ) ( 2 * IRPartitionSize ) * cos( M_PI * ( 1 - fadeFactor ) / 2 );
+			newSamples[ j ] =   inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] 
+                                          / ( float ) ( 2 * IRPartitionSize ) * cos( M_PI * ( 1 - fadeFactor ) / 2 );
 
 		    newSamples[ j + IRPartitionSize ] = 0.0;
 
@@ -277,42 +186,34 @@ ImpulseResponse::ImpulseResponse( string fileName, size_t IRPartitionSize, size_
             {
 		for( unsigned int j = 0; j < IRPartitionSize; ++j )
                 {
-		    newSamples[ j ] = inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] / ( float ) ( 2 * IRPartitionSize );
+		    newSamples[ j ] =   inputMultiChannelDeinterleaveBuffer[ i + j * noChannels ] 
+                                      / ( float ) ( 2 * IRPartitionSize );
+
 		    newSamples[ j + IRPartitionSize ] = 0.0;
 		}
 	    }
+            ////debug
+            //cerr<< "h=impulseresponse.cpp " << endl;
+            //for( int i=0;i<64;++i)
+            //    cerr << newBuffer.getSamples()[i]<<endl;
 
 	    newBuffer.fft();
+
+            ////debug
+            //cerr<< "H=impulseresponse.cpp " << endl;
+            //for( int i=0;i<64;++i)
+            //    cerr << newBuffer.getSamples()[i]<<endl;
 	}
 
 	++noPartitions;
-
     }
 
-    //if( fwonderConf->IRVerbose )
-        //cout << "IR: " << fileName << " -> partition size: " << IRPartitionSize << ", parts: " << noPartitions << "   first part: " << firstPart << endl;
+    if( fwonderConf->IRVerbose )
+        cout << "IR: " << fileName << " -> partition size: " << IRPartitionSize << ", parts: " << noPartitions 
+             << "   first part: " << firstPart << endl;
 
     killed = false; 
 }
-
-
-//// Create Empty impulseresponse.
-//ImpulseResponse::ImpulseResponse( size_t IRPartitionSize, size_t maxNoPartitions, int noChannels ) : xPos( 0 ), yPos( 0 ), IRPartitionSize( IRPartitionSize ), noChannels( noChannels ), noPartitions( 0 )
-//{
-//    killed = false;
-//
-//    for( int i = 0; i < noChannels; ++i )
-//	channels.push_back( new ImpulseResponseChannel( IRPartitionSize ) );
-//
-//    for( unsigned int i = 0; i < maxNoPartitions; ++i )
-//    {
-//        //for( int j = 0; j < noChannels; ++j )
-//        //{
-//	//  //FftwBuf *newBuffer = channels[j]->new_buf( 0 );
-//	//}
-//	++noPartitions;
-//    }
-//}
 
 
 ImpulseResponse::~ImpulseResponse() 
@@ -338,6 +239,11 @@ int ImpulseResponse::getNoPartitions()
     return noPartitions;
 }
 
+ImpulseResponse::IRType ImpulseResponse::getType()
+{
+    return type;
+}
+
 
 int ImpulseResponse::getFirstPartition() 
 {
@@ -356,27 +262,9 @@ ImpulseResponseChannel& ImpulseResponse::getChannel( int i )
     if( killed )
         cerr << "Error: ImpulseResponse::getChannel( " << i << " ) called on a killed IR!  " << endl;
 
-    //if( ! inUse )
-        //cerr << "Error: ImpulseResponse::getChannel( " << i << " ) called on an IR, that should not be in use! " << endl;
-
     // let this provoke an exception on the next call to channels.at()
     if( channels.empty() )
         cerr << "Error: ImpulseResponse::getChannel( " << i << " ) called with no channel available!  " << endl;
 
-    //ImpulseResponseChannel& temp = *( channels.at( i ) ) ;
-
-    //return temp;
     return *( channels.at( i ) );
-}
-
-
-ImpulseResponse::ImpulseResponse( const ImpulseResponse& other )
-{
-    // just preventing copying
-}
-
-
-void /*ImpulseResponse&*/ ImpulseResponse::operator = ( const ImpulseResponse& other )
-{
-    // just preventing copying
 }

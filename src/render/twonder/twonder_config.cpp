@@ -80,6 +80,7 @@ TwonderConfig::TwonderConfig( int argc, char** argv )
     elevationZ1 = 0.0;
     elevationZ2 = 0.0;
     slope       = 0.0;
+    hasSlope = false;
 
     parseArgs( argc, argv );
 
@@ -134,7 +135,7 @@ void TwonderConfig::parseArgs( int argc, char** argv )
         switch( c )
         {
             case 'd':
-                daemon = 1;
+                daemon = true;
                 break;
 
             case 'c':
@@ -180,7 +181,7 @@ void TwonderConfig::parseArgs( int argc, char** argv )
                 break;
 
             case 'v':
-                verbose = 1;
+                verbose = true;
                 break;
 
             case 1:

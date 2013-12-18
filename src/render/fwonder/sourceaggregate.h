@@ -64,6 +64,7 @@ public:
     ImpulseResponse* newIR;
     ImpulseResponse* oldIR;
     ImpulseResponse* crossfadeInbetweenIR;
+    ImpulseResponse* scheduledIR;
 
     ImpulseResponse* tailIR;
 

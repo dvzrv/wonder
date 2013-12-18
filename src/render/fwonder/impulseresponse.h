@@ -36,9 +36,6 @@
 
 #include "fftwbuf.h"
 
-//debugtest
-#include "pthread.h"
-
 class ImpulseResponseChannel : public std::vector < FftwBuf* >
 {
 
@@ -59,25 +56,29 @@ private:
 
 class ImpulseResponse
 {
-
 public:
-    ImpulseResponse( std::string fileName, size_t IRPartitionSize, size_t maxNoPartitions );
-    ImpulseResponse( std::string fileName, size_t IRPartitionSize, size_t maxNoPartitions, int fadeInPartition, int fadeInLength = 0 );
-    //ImpulseResponse( size_t IRPartitionSize, size_t maxNoParts, int noChannels );
+    enum IRType
+    {
+        STATIC_IR,
+        DYNAMIC_IR,
+        TAIL_IR
+    };
+
+    ImpulseResponse( std::string fileName, size_t IRPartitionSize, size_t maxNoPartitions, int fadeInPartition, int fadeInLength, IRType type );
     ~ImpulseResponse();
 
     int    getNoChannels();
     int    getNoPartitions();
+    IRType getType();
 
     int    getFirstPartition() ;
     size_t getPartitionsize();
 
     ImpulseResponseChannel& getChannel( int i );
 
-    bool killed;
-    bool inUse;
-    int  xPos;
-    int  yPos;
+    bool   killed;
+    int    xPos;
+    int    yPos;
 
 private:
     void /*ImpulseResponse&*/ operator = ( const ImpulseResponse& other );
@@ -89,6 +90,7 @@ private:
     int    noChannels;
     int    noPartitions;
     int    firstPart;
+    IRType type;
 };
 
 #endif

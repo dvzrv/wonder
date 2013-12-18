@@ -176,6 +176,38 @@ int Cwonder::createProject( string path, bool withScore )
     return 0;
 }
 
+int Cwonder::addProjectScore()
+{
+    // now create the project
+	if ( project->addScore() == -1 ){
+        wonderlog->print( LOG_ERR, "[E-add_score] error: score already exists" );
+        returnString = "Score already exists error";
+		return -1;
+	}
+
+    // send information about the whole project to the visual stream
+    // TODO: this may exceed the sizelimit of an OSC message, slice it up somehow
+    string p = project->show();
+    for( streamIter = visualStream->begin(); streamIter != visualStream->end(); ++streamIter )
+        lo_send( streamIter->address, "/WONDER/project/xmlDump", "is",  p.empty(), p.c_str() );
+
+    scenario = project->getScenario();
+
+	for( streamIter = scoreStream->begin(); streamIter != scoreStream->end(); ++streamIter )
+        {
+             lo_send( streamIter->address, "/WONDER/score/create",    "s", project->scoreFileName.c_str() );
+             lo_send( streamIter->address, "/WONDER/score/enableMMC", "i", 1 );
+        }
+    
+    sendScenario();
+
+    wonderlog->print( LOG_INFO, "[V-add_score] ok. " );
+
+    returnString = "add score ok.";
+    
+    return 0;
+}
+
 
 int Cwonder::loadProject( string path )
 {
@@ -1789,6 +1821,21 @@ int Cwonder::renderStreamConnect( string host, string port, string name )
     lo_send_message( newClientAddress, "/WONDER/global/renderpolygon", renderPolygonMessage );
     lo_message_free( renderPolygonMessage );
 
+    // send elevation information; this is still a crude hack, but works
+    lo_message elevationMessage = lo_message_new();
+
+///std::cout << cwonderConf->elevationY1 << ", " << cwonderConf->elevationZ1 << ", " << cwonderConf->elevationY2 << ", " << cwonderConf->elevationZ2 << std::endl;  
+
+    lo_message_add_string( elevationMessage, cwonderConf->roomName.c_str() );
+//     lo_message_add_int32(  elevationMessage, cwonderConf->renderPolygonPoints.size() );
+    lo_message_add_float(  elevationMessage, cwonderConf->elevationY1 );
+    lo_message_add_float(  elevationMessage, cwonderConf->elevationZ1 );
+    lo_message_add_float(  elevationMessage, cwonderConf->elevationY2 );
+    lo_message_add_float(  elevationMessage, cwonderConf->elevationZ2 );
+
+    lo_send_message( newClientAddress, "/WONDER/global/elevation", elevationMessage );
+    lo_message_free( elevationMessage );
+
     // if in basic mode activate all sources for rendering and let them use their default values
     if( cwonderConf->basicMode )
     {
@@ -1951,6 +1998,36 @@ int Cwonder::visualStreamConnect( string host, string port, string name )
     }
     for( streamIter = timerStream->begin(); streamIter != timerStream->end(); ++streamIter )
         sendStreamClientDataTo( newClientAddress, *streamIter );
+
+    // if in basic mode activate all sources for rendering and let them use their default values
+    if( cwonderConf->basicMode )
+    {
+        for( int i = 0 ; i < cwonderConf->maxNoSources; i++ )
+            lo_send( newClientAddress, "/WONDER/source/activate", "i", i );
+    }
+    else
+    {
+        // send the current status of the sources (even though the host is (still) on the list)
+        // but only if a scenario is there (i.e. project loaded/created)
+        if( scenario )
+        {
+            for( int i = 0 ; i < ( int ) scenario->sourcesVector.size(); ++i )
+            {               
+                Source* source = &( scenario->sourcesVector[ i ] );
+
+                if( source->active )
+                {
+                    lo_send( newClientAddress, "/WONDER/source/activate",      "i",   i );
+                    lo_send( newClientAddress, "/WONDER/source/type",          "ii",  i, source->type );
+                    lo_send( newClientAddress, "/WONDER/source/angle",         "if",  i, source->angle );
+                    lo_send( newClientAddress, "/WONDER/source/position",      "iff", i, source->pos[ 0 ], source->pos[ 1 ] );
+                    lo_send( newClientAddress, "/WONDER/source/dopplerEffect", "ii",  i, ( int ) source->dopplerEffect );
+                }
+                else
+                    lo_send( newClientAddress, "/WONDER/source/deactivate", "i", i );
+            }
+        }
+    }
 
     if ( ret == 1 )         
         returnString = "reconnected";

@@ -75,6 +75,7 @@ SourceAggregate::SourceAggregate( string jackPortName, int IRPartitionSize, int 
         std::cerr << "Error! Could not get impulse response from matrix manager. " << std::endl;
         exit( EXIT_FAILURE );
     }
+    scheduledIR = currentIR;
 
     if( fwonderConf->useTail )
         tailIR = IRManager->getTail( tailPartitionSize, noTailPartitions, maxIRLength );
@@ -112,10 +113,4 @@ SourceAggregate::~SourceAggregate()
         delete IRManager;
         IRManager = NULL;
     }
-}
-
-
-SourceAggregate::SourceAggregate( const SourceAggregate& other )
-{
-    // just preventing copying
 }

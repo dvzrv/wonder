@@ -4,7 +4,7 @@
  *  http://swonder.sourceforge.net                                                   *
  *                                                                                   *
  *                                                                                   *
- *  Technische Universität Berlin, Germany                                           *
+ *  Technische Universitï¿½t Berlin, Germany                                           *
  *  Audio Communication Group                                                        *
  *  www.ak.tu-berlin.de                                                              *
  *  Copyright 2006-2008                                                              *
@@ -30,6 +30,7 @@
 #include <string>
 #include <cstring>
 #include <cstdlib>
+#include <cstdio>
 
 #include "jfwonder_config.h"
 
@@ -42,6 +43,7 @@ jfwonderConfig::jfwonderConfig( int argc, char **argv )
     verbose       = 0;
     jfverbose     = 0;
     daemon        = 0;
+	controlRate   = 1024;
     listeningPort = "58600";
     user          = NULL;
 
@@ -77,6 +79,7 @@ void jfwonderConfig::parse_args( int argc, char **argv )
                 {"listeningport",  required_argument,  0, 'o'},
                 {"cwonderhost",    required_argument,  0, 'i'},
                 {"cwonderport",    required_argument,  0, 'p'},
+				{"controlrate",    required_argument,  0, 'c'},
                 {"verbose",        no_argument,        0, 'v'},
                 {"jfverbose",      no_argument,        0, 'f'},
                 {"help",           no_argument,        0, 'h'},
@@ -85,7 +88,7 @@ void jfwonderConfig::parse_args( int argc, char **argv )
 
         int option_index = 0;
 
-        c = getopt_long( argc, argv, "du:o:i:p:vfh", 
+        c = getopt_long( argc, argv, "du:o:i:p:c:vfh", 
                          long_options, &option_index );
         
         if( c == -1 )
@@ -113,6 +116,10 @@ void jfwonderConfig::parse_args( int argc, char **argv )
                 cwonderPort = strdup( optarg );
                 break;
 
+            case 'c':
+                controlRate = atoi( optarg );
+                break;
+
             case 'v':
                 verbose = 1;
                 break;
@@ -128,6 +135,7 @@ void jfwonderConfig::parse_args( int argc, char **argv )
                         "--listeningport, -o ( port where jfwonder listens, default is 58600 ) \n"
                         "--cwonderhost,   -i ( ip-address where cwonder is running )\n"
                         "--cwonderport,   -p ( port where cwonder can be reached )\n"
+						"--controlrate,   -c ( control rate for the frame time, default is 1024 )\n"
                         "--verbose,       -v \n"
                         "--jfverbose,     -f (print jackframetime) \n"
                         "--help,          -h \n\n");       

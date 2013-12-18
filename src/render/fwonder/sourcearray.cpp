@@ -58,8 +58,3 @@ SourceArray::~SourceArray()
         pop_back();
     }
 }
-
-SourceArray::SourceArray( const SourceArray& other )
-{
-    // just preventing copying
-}

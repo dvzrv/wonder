@@ -52,17 +52,33 @@ import sys
 import os
 import time
 
+import platform   # Seems to have more portable uname() than os
+
 # ======================================================================
 # constants
 # ======================================================================
 
 PACKAGE = 'WONDER'
-VERSION = '3.1.9'
-
+VERSION = '3.2.0'
 
 # ======================================================================
 # utility functions
 # ======================================================================
+
+PLATFORM = platform.uname()[0].lower()
+
+#def CheckGccVersion( context ):
+#    context.Message('gcc > 4.5?')
+#    ret = context.TryAction('gcc -dumpversion')[0]
+#    context.Result( ret )
+#    print ret    
+#    return ret
+    
+#def CheckCC(context):
+#    res = SCons.Conftest.CheckCC(context)
+#    return not res
+
+
 
 def createEnvironment(*keys):
     env = os.environ
@@ -145,23 +161,24 @@ print "\n========== " + PACKAGE + ' ' + VERSION + " ========== "
 # ======================================================================
 
 # Read options from the commandline
-opts = Options(None, ARGUMENTS)
-opts.AddOptions(
-    BoolOption('lib',         'Set to 1 to build the wonder library',                       0),
-    BoolOption('jackpp',      'Set to 1 to build jackpplibrary',                            0),
-    BoolOption('cwonder',     'Set to 1 to build cwonder',                                  0),
-    BoolOption('twonder',     'Set to 1 to build twonder',                                  0),
-    BoolOption('fwonder',     'Set to 1 to build fwonder',                                  0),
-    BoolOption('xwonder',     'Set to 1 to build xwonder',                                  0),
-    BoolOption('scoreplayer', 'Set to 1 to build scoreplayer',                              0),
-    BoolOption('jfwonder',    'Set to 1 to build jfwonder',                                 0),
-    BoolOption('qfwonder',    'Set to 1 to build qfwonder',                                 0),
-    BoolOption('tracker',     'Set to 1 to build tracker',                                  0), 
-    BoolOption('wfs',         'Set to 1 to build all wave field synthesis related targets', 0),
-    BoolOption('bas',         'Set to 1 to build all binaural synthesis related targets',   0),
-    BoolOption('all',         'Set to 1 to build the all the targets',                      0),
-    EnumOption('build',       'Set the build version',                 'release', allowed_values=('debug', 'release'), ignorecase=2),
-    PathOption('installto',   'Set the installation directory',        '/usr/local')
+opts = Variables(None, ARGUMENTS)
+opts.AddVariables(
+    BoolVariable('lib',         'Set to 1 to build the wonder library',                       0),
+    BoolVariable('jackpp',      'Set to 1 to build jackpplibrary',                            0),
+    BoolVariable('cwonder',     'Set to 1 to build cwonder',                                  0),
+    BoolVariable('twonder',     'Set to 1 to build twonder',                                  0),
+    BoolVariable('fwonder',     'Set to 1 to build fwonder',                                  0),
+    BoolVariable('xwonder',     'Set to 1 to build xwonder',                                  0),
+    BoolVariable('scoreplayer', 'Set to 1 to build scoreplayer',                              0),
+    BoolVariable('jfwonder',    'Set to 1 to build jfwonder',                                 0),
+    BoolVariable('qfwonder',    'Set to 1 to build qfwonder',                                 0),
+    BoolVariable('tracker',     'Set to 1 to build tracker',                                  0), 
+    BoolVariable('wfs',         'Set to 1 to build all wave field synthesis related targets', 0),
+    BoolVariable('bas',         'Set to 1 to build all binaural synthesis related targets',   0),
+    BoolVariable('all',         'Set to 1 to build the all the targets',                      0),
+    EnumVariable('build',       'Set the build version',                 'release', allowed_values=('debug', 'release'), ignorecase=2),
+    PathVariable('installto',   'Set the installation directory',        '/usr/local'),
+    ('arch', 'Set the target architecture', 'native' )
 )
 
 
@@ -180,7 +197,7 @@ env = Environment(options = opts,
                   PACKAGE = PACKAGE,
                   VERSION = VERSION,
                   URL     = 'http://swonder.sourceforge.net',
-                  #TARBALL = PACKAGE + VERSION + '.tbz2',
+                  TARBALL = PACKAGE + VERSION + '.tbz2',
                   CPPPATH = includePath)
 
 # set options if target all is selected
@@ -190,8 +207,9 @@ if env['all']:
     env['cwonder']     = 1 
     env['twonder']     = 1
     env['fwonder']     = 1
-    env['xwonder']     = 1 
-    env['scoreplayer'] = 1 
+    env['xwonder']     = 1
+    if PLATFORM == 'linux':
+       env['scoreplayer'] = 1
     env['jfwonder']    = 1 
     env['qfwonder']    = 1 
     env['tracker']     = 1 
@@ -203,7 +221,8 @@ if env['wfs']:
     env['cwonder']     = 1 
     env['twonder']     = 1
     env['xwonder']     = 1 
-    env['scoreplayer'] = 1 
+    if PLATFORM == 'linux':
+       env['scoreplayer'] = 1
     env['jfwonder']    = 1 
 
 
@@ -231,11 +250,15 @@ env.Append(CCFLAGS = '-Wall')
 if env['build'] == 'debug':
     env.Append(CCFLAGS = '-g')
 
+print env['arch']
+
 # target architecture and optimizations
-# march=native requires gcc 4.2x,
-# if you're using gcc version earlier than  4.2 please use one of the disabled lines  
+# march=native requires gcc 4.3x,
+# if you're using gcc version earlier than  4.3 please use one of the disabled lines  
 if env['build'] == 'release':
-    env.Append(CCFLAGS = '-O3 -march=native -msse -msse2 -msse3 -mfpmath=sse')
+    env.Append(CCFLAGS = '-O3 -msse -msse2 -msse3 -mfpmath=sse')
+    if PLATFORM == 'linux': # somewhat of a hack, but osx still ships with an old gcc
+       env.Append(CCFLAGS = '-march=native')
     env.Append(CPPDEFINES = 'NDEBUG')
 #env.Append(CCFLAGS = '-O3 -march=pentium-m -msse -msse2 -msse3 -mfpmath=sse')
 #env.Append(CCFLAGS = '-O3 -march=opteron -msse -msse2 -msse3 -mfpmath=sse')
@@ -266,12 +289,25 @@ if env['fwonder']:
     if not conf.LookForPackage('fftw3f'):
         Exit(1)
 
-
 # libxml is not needed for all modules of WONDER
 if env['cwonder'] | env['scoreplayer'] | env['lib'] | env['twonder'] | env['tracker'] | env['fwonder'] | env['qfwonder']:
     if not conf.LookForPackage('libxml++-2.6'):
         Exit(1)
     env.ParseConfig('pkg-config --cflags --libs libxml++-2.6')
+
+# jack is not needed for all modules of WONDER
+if env['lib'] | env['twonder'] | env['jackpp'] | env['fwonder']:
+    if not conf.LookForPackage('jack'):
+        Exit(1)
+    env.ParseConfig('pkg-config --cflags --libs jack')
+
+# asound is not needed for all modules of WONDER
+if env['scoreplayer']:
+    if not conf.LookForPackage('alsa'):
+        Exit(1)
+    #if not conf.LookForPackage('pthread'):
+        #Exit(1)
+    env.ParseConfig('pkg-config --cflags --libs alsa')
 
 # liblo is needed for all modules of WONDER
 if not conf.LookForPackage('liblo'):
@@ -356,7 +392,7 @@ libNameV             =  libName + '.' + wonderLibraryVersion
 
 if env['lib']:
     print 'Wonder library\t[Yes]'
-    libenv = env.Copy()
+    libenv = env.Clone()
     libenv.Append(LIBS=['jack'], RPATH=rpath)
     wonderlib = libenv.SharedLibrary('bin/' + wonderLibraryName, lib_srcs)
     libs.append(wonderlib)
@@ -377,7 +413,7 @@ libNameVJackpp       =  libNameJackpp + '.' + jackppLibraryVersion
 
 if env['jackpp']:
     print 'jackpp library\t[Yes]'
-    jackppenv = env.Copy()
+    jackppenv = env.Clone()
     jackppenv.Append(LIBS=['jack'])
     jackpplib = jackppenv.SharedLibrary('bin/'+jackppLibraryName, jackpp_srcs)
     libs.append(jackpplib)
@@ -399,7 +435,7 @@ obj/cwonder/oscping.cpp
 
 if env['cwonder']:
     print 'cwonder\t\t[Yes]'
-    cwonderenv = env.Copy()
+    cwonderenv = env.Clone()
     cwonderenv.Append(LIBS=[wonderLibraryName], LIBPATH='#bin/', RPATH=rpath)
     cwonderprog = cwonderenv.Program('bin/cwonder3', cwonder_srcs)
     executables.append(cwonderprog)    
@@ -421,8 +457,9 @@ obj/render/twonder/twonder_config.cpp
 
 if env['twonder']:
     print 'twonder\t\t[Yes]'
-    twonderenv = env.Copy()
+    twonderenv = env.Clone()
     twonderenv.Append(CPPPATH='src/jackpp/')
+    twonderenv.Append(LIBS=['jack']) # explicit link to jack needed on osx
     twonderenv.Append(LIBS=[wonderLibraryName, jackppLibraryName], LIBPATH='#bin/', RPATH=rpath)
     twonderprog = twonderenv.Program('bin/twonder3', twonder_srcs)
     executables.append(twonderprog)
@@ -449,7 +486,7 @@ obj/render/fwonder/delayline.cpp
 
 if env['fwonder']:
     print 'fwonder\t\t[Yes]'
-    fwonderenv = env.Copy()
+    fwonderenv = env.Clone()
     fwonderenv.ParseConfig('pkg-config --libs sndfile')
     fwonderenv.ParseConfig('pkg-config --libs fftw3f')
     fwonderenv.Append(CPPPATH='src/jackpp/')
@@ -486,7 +523,7 @@ obj/lib/oscin.cpp
 
 if env['xwonder']:
     print 'xwonder\t\t[Yes]'
-    xwonderenv = env.Copy()
+    xwonderenv = env.Clone()
     xwonderenv.Append(LIBS=['GLU'])
     xwonderenv.Tool('qt4', toolpath=['./tools/qt4tool'])
     xwonderenv.EnableQt4Modules(['QtCore','QtGui','QtOpenGL','QtXml'],debug=False) 
@@ -512,7 +549,7 @@ obj/score/rtmidi/RtMidi.cpp
 
 if env['scoreplayer']:
     print 'scoreplayer\t[Yes]'
-    scoreplayerenv = env.Copy()
+    scoreplayerenv = env.Clone()
     scoreplayerenv.Append(CCFLAGS = ['-D__LINUX_ALSASEQ__'])
     if env['build']=='debug':
         scoreplayerenv.Append(CCFLAGS = ['-D__RTMIDI_DEBUG__'])
@@ -531,7 +568,8 @@ obj/jfwonder/jfwonder_config.cpp
 
 if env['jfwonder']:
     print 'jfwonder\t[Yes]'
-    jfwonderenv = env.Copy()
+    jfwonderenv = env.Clone()
+    jfwonderenv.Append(LIBS=['jack']) # explicit link to jack needed on osx
     jfwonderenv.Append(LIBS=[wonderLibraryName], LIBPATH='#bin/', RPATH=rpath)
     jfwonderprog = jfwonderenv.Program('bin/jfwonder3', jfwonder_srcs)
     executables.append(jfwonderprog)
@@ -549,7 +587,7 @@ obj/tracker/isense.c
 
 if env['tracker']:
     print 'tracker\t\t[Yes]'
-    trackerenv = env.Copy()
+    trackerenv = env.Clone()
     trackerenv.Append(LIBS=[wonderLibraryName], LIBPATH='#bin/', RPATH=rpath)
     trackerprog = trackerenv.Program('bin/tracker3', tracker_srcs)
     executables.append(trackerprog)
@@ -569,7 +607,7 @@ obj/qfwonder/qfwonder_config.cpp
 
 if env['qfwonder']:
     print 'qfwonder\t[Yes]'
-    qfwonderenv = env.Copy()
+    qfwonderenv = env.Clone()
     qfwonderenv.Tool('qt4', toolpath=['./tools/qt4tool'])
     qfwonderenv.EnableQt4Modules(['QtCore','QtGui','QtXml'],debug=False) 
     qfwonderenv.Append(LIBS=[wonderLibraryName], LIBPATH='#bin/', RPATH=rpath)
@@ -621,9 +659,9 @@ if 'install' in COMMAND_LINE_TARGETS and '-c' not in sys.argv:
     # now do the installation 
     env.Alias( 'install', env.Install(CONF_DIR, "wonder.built.info") )
     env.Alias( 'install', env.Install(CONF_DIR, configs) )
+    env.Alias( 'install', env.Install(DTD_DIR, dtds) )
     env.Alias( 'install', env.Install(LIB_DIR, libs) )
     env.Alias( 'install', env.Install(BIN_DIR, executables) )
-    env.Alias( 'install', env.Install(DTD_DIR, dtds) )
 
     # install daemon services
     if env['cwonder']: 
@@ -648,6 +686,70 @@ print 'build\t\t[' + env['build'] + ']'
 if 'install' in COMMAND_LINE_TARGETS :
     print 'install to:\t' + env['installto']
     print '\n'
+
+
+# ======================================================================
+# distribution
+# ======================================================================
+
+# for packaging:
+import tarfile
+import re
+
+ANY_FILE_RE = re.compile('.*')
+DTD_FILE_RE = re.compile('.*\.dtd')
+XML_FILE_RE = re.compile('.*\.xml')
+DOC_FILE_RE = re.compile('.*\.(txt|ods|pdf)$')
+SRC_FILE_RE = re.compile('.*\.(c(pp)|h|in|s)$')
+
+
+DIST_FILES = Split('''
+SConstruct
+README
+''')
+
+DIST_SPECS = [
+    ('configs', XML_FILE_RE),
+    ('documentation', DOC_FILE_RE),
+    ('dtd', DTD_FILE_RE),
+    ('src', ANY_FILE_RE),
+    #('src/ladspa', ANY_FILE_RE),
+    #('src/score/rtmidi', ANY_FILE_RE),
+	#('src/xwonder', ANY_FILE_RE),
+    ('tools', ANY_FILE_RE)
+    ]
+
+
+def dist_paths():
+    paths = DIST_FILES[:]
+    specs = DIST_SPECS[:]
+    while specs:
+        base, re = specs.pop()
+        if not re: re = ANY_FILE_RE
+        for root, dirs, files in os.walk(base):
+            if '.svn' in dirs: dirs.remove('.svn')
+            for path in dirs[:]:
+                if re.match(path):
+                    specs.append((os.path.join(root, path), re))
+                    dirs.remove(path)
+            for path in files:
+                if re.match(path):
+                    paths.append(os.path.join(root, path))
+    paths.sort()
+    return paths
+
+def build_tar(env, target, source):
+    paths = dist_paths()
+    tarfile_name = str(target[0])
+    tar_name = os.path.splitext(os.path.basename(tarfile_name))[0]
+    tar = tarfile.open(tarfile_name, "w:bz2")
+    for path in paths:
+        tar.add(path, os.path.join(tar_name, path))
+    tar.close()
+
+if 'dist' in COMMAND_LINE_TARGETS:
+    env.Alias('dist', env['TARBALL'])
+    env.Command(env['TARBALL'], 'SConstruct', build_tar)
 
 
 # ======================================================================

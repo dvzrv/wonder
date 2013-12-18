@@ -75,9 +75,3 @@ void ComplexDelayLine::clearCurrentBufferAndAdvance()
     if( currentBuffer >= ( int ) noBuffers )
         currentBuffer = 0;
 }
-
-
-ComplexDelayLine::ComplexDelayLine( const ComplexDelayLine& other )
-{
-    // just preventing copying
-}

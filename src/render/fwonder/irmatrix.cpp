@@ -73,8 +73,8 @@ IRMatrix::IRMatrix()
     for( int i = 0; i < width * height; ++i )
         theIRMatrix[ i ] = NULL;
 
-    xActual = 0;
-    yActual = 0;
+    xCurrent = 0;
+    yCurrent = 0;
 }
 
 
@@ -113,7 +113,6 @@ bool IRMatrix::isIRLoadedAt( int x, int y )
         return false;
     
     return ( theIRMatrix[ ( x - xMin ) + ( y - yMin ) * width ] != NULL );
-    //return ( getIRAt( x,y ) != NULL );
 }
 
 
@@ -141,11 +140,10 @@ ImpulseResponse* IRMatrix::findBestIR( float x, float y )
                     {
                         minimalDistance = distance;
 
-                        xActual = i;
-                        yActual = j;
+                        xCurrent = i;
+                        yCurrent = j;
 
                         bestIR  = getIRAt( i, j );
-                        bestIR->inUse = true;
                     }
                 }
             }
@@ -153,10 +151,11 @@ ImpulseResponse* IRMatrix::findBestIR( float x, float y )
     pthread_mutex_unlock( &mutex );
 
     if( fwonderConf->IRVerbose )
-        cout <<  "Current IR in use:" << setw( 6 ) << xActual  << ", " << setw( 6 ) << yActual << "  pan: " << setw( 6 ) << x << "  tilt: " << setw( 6 ) << y << "\r" << endl << flush;
+        cout <<  "Current IR in use:" << setw( 6 ) << xCurrent  << ", " << setw( 6 ) << yCurrent << "  pan: " 
+             << setw( 6 ) << x << "  tilt: " << setw( 6 ) << y << "\r" << endl << flush;
 
     // send currently used ir to qfwonder
-    lo_send( fwonderConf->qfwonderAddr , "/WONDER/qfwonder/currentIR", "ii", xActual, yActual ); 
+    lo_send( fwonderConf->qfwonderAddr , "/WONDER/qfwonder/currentIR", "ii", xCurrent, yCurrent ); 
 
     return bestIR;
 }
@@ -166,8 +165,6 @@ pair< int, int > IRMatrix::getEmptyPosition( int x , int y )
 {
     // find the nearest empty position (i.e no IR loaded)
     // search is starting at the given x|y position
-    // then proceeding from a distance determined by the y resolution at 12o'clock in a clockwise manner
-    // widening the radius 
     pthread_mutex_lock  ( &mutex );
         for( int j = 0; j <= dynamicCacheYRadius && ( y -j ) >= yMin && ( y + j ) <= yMax; j += dynamicCacheYResolution )
         {
@@ -214,7 +211,7 @@ pair< int, int > IRMatrix::getDisposableIRPosition( int x, int y, int directionX
             for( int ix = xMin; ix <= xMax; ++ix )     // starting left
                 for( int iy = yMax; iy >= yMin; --iy ) // starting at the top
                     if( ! ( ( ( ix % staticCacheXResolution ) == 0 ) && ( ( iy % staticCacheYResolution ) == 0 ) ) ) 
-                        if( isIRLoadedAt( ix, iy ) )
+                        if( isIRLoadedAt( ix, iy ) && ix != xCurrent && iy != yCurrent )
                             if( ( (int) abs( (float) (x - ix) ) > cacheRadiusX ) || ( (int) abs( (float) (y - iy) ) > cacheRadiusY ) )
                                 return pair< int, int >( ix, iy );
         }
@@ -223,7 +220,7 @@ pair< int, int > IRMatrix::getDisposableIRPosition( int x, int y, int directionX
             for( int ix = xMax; ix >= xMin; --ix )     // starting right
                 for( int iy = yMax; iy >= yMin; --iy ) // starting at the top
                     if( ! ( ( ( ix % staticCacheXResolution ) == 0 ) && ( ( iy % staticCacheYResolution ) == 0 ) ) ) 
-                        if( isIRLoadedAt( ix, iy ) )
+                        if( isIRLoadedAt( ix, iy ) && ix != xCurrent && iy != yCurrent )
                             if( ( (int) abs( (float) (x - ix) ) > cacheRadiusX ) || ( (int) abs( (float) (y - iy) ) > cacheRadiusY ) )
                                 return pair< int, int >( ix, iy );
  	}
@@ -235,7 +232,7 @@ pair< int, int > IRMatrix::getDisposableIRPosition( int x, int y, int directionX
             for( int ix = xMin; ix <= xMax; ++ix )     // starting left
                 for( int iy = yMin; iy <= yMax; ++iy ) // starting at the bottom
                     if( ! ( ( ( ix % staticCacheXResolution ) == 0 ) && ( ( iy % staticCacheYResolution ) == 0 ) ) ) 
-                        if( isIRLoadedAt( ix, iy ) )
+                        if( isIRLoadedAt( ix, iy ) && ix != xCurrent && iy != yCurrent )
 		            if( ( (int) abs( (float) (x - ix) ) > cacheRadiusX ) || ( (int) abs( (float) (y - iy) ) > cacheRadiusY ) )
 			        return pair< int, int >( ix, iy );
  	}
@@ -244,7 +241,7 @@ pair< int, int > IRMatrix::getDisposableIRPosition( int x, int y, int directionX
             for( int ix = xMax; ix >= xMin; --ix )     // starting right
                 for( int iy = yMin; iy <= yMax; ++iy ) // starting at the bottom
                     if( ! ( ( ( ix % staticCacheXResolution ) == 0 ) && ( ( iy % staticCacheYResolution ) == 0 ) ) ) 
-                        if( isIRLoadedAt( ix, iy ) )
+                        if( isIRLoadedAt( ix, iy ) && ix != xCurrent && iy != yCurrent )
                             if( ( (int) abs( (float) (x - ix) ) > cacheRadiusX ) || ( (int) abs( (float) (y - iy) )> cacheRadiusY ) )
                                 return pair< int, int >( ix, iy );
         }
@@ -257,6 +254,7 @@ pair< int, int > IRMatrix::getDisposableIRPosition( int x, int y, int directionX
 
 void IRMatrix::addIR( ImpulseResponse* IR, int x, int y, bool isDynamicIR )
 {
+    // delete passed in IR if it is invalid
     if( x < xMin  ||  x > xMax  || y < yMin  ||  y > yMax ) 
     {
 	cerr << "IR Index (" << x << "|" << y << ") of new IR out of range! " << endl;
@@ -303,30 +301,18 @@ void IRMatrix::removeIR( int x, int y )
     ImpulseResponse* removeThisIR = theIRMatrix[ ( x - xMin ) + ( y - yMin ) * width ];
       
     pthread_mutex_lock( &mutex );
-        if( removeThisIR &&  ! removeThisIR->inUse )
+        if( removeThisIR )
         {
             delete removeThisIR;
             removeThisIR = NULL;
-        }
-
-        theIRMatrix[ ( x - xMin ) + ( y - yMin ) * width ] = NULL;
+            --noLoadedDynamicIRs;
     pthread_mutex_unlock( &mutex );
 
-    --noLoadedDynamicIRs;
-      
-    //Communicate with the qfwonder
-    lo_send( fwonderConf->qfwonderAddr, "/WONDER/qfwonder/numLoadedIRs", "ii",   noLoadedDynamicIRs, true );
-    lo_send( fwonderConf->qfwonderAddr, "/WONDER/qfwonder/IRLoaded",     "iiii", x, y, 0, true ); 
-}
-
-
-IRMatrix::IRMatrix( const IRMatrix& other)
-{
-    // just preventing copying
-}
-
-
-void /*IRMatrix&*/ IRMatrix::operator = ( const IRMatrix& other )
-{
-    // just preventing copying
+            //Communicate with the qfwonder
+            lo_send( fwonderConf->qfwonderAddr, "/WONDER/qfwonder/numLoadedIRs", "ii",   noLoadedDynamicIRs, true );
+            lo_send( fwonderConf->qfwonderAddr, "/WONDER/qfwonder/IRLoaded",     "iiii", x, y, 0, true ); 
+            theIRMatrix[ ( x - xMin ) + ( y - yMin ) * width ] = NULL;
+        }
+        else
+    pthread_mutex_unlock( &mutex );
 }

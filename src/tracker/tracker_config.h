@@ -90,7 +90,10 @@ public:
     std::string trackerName;
 
     int omit;
-
+    
+    // for slowing down tracker_app (only needed for itracker), --> uwait(wait)
+    int wait;
+    
     std::list< OSCClient > clients;
 
     // flag for console output of data

@@ -144,6 +144,7 @@ void OSCControl::addMethods()
         // project commands
         addMethod( "/WONDER/project/createWithScore",    "s", projectCreateWithScoreHandler,    this );
         addMethod( "/WONDER/project/createWithoutScore", "s", projectCreateWithoutScoreHandler, this );
+        addMethod( "/WONDER/project/addScore",           "",  projectAddScoreHandler,           this );
         addMethod( "/WONDER/project/load",               "s", projectLoadHandler,               this );
         addMethod( "/WONDER/project/save",               "",  projectSaveHandler,               this );
         addMethod( "/WONDER/project/save",               "s", projectSaveAsHandler,             this );
@@ -536,6 +537,19 @@ int OSCControl::projectCreateWithoutScoreHandler( handlerArgs )
         wonderlog->print( LOG_DEBUG, ( ( OSCControl* ) user_data )->getContent( path, types, argv, argc ) );
 
     int ret = cwonder->createProject( &argv[ 0 ]->s, false );
+
+    lo_address from = lo_message_get_source( msg );
+    lo_send( from, "/WONDER/reply", "sis", path, ret, cwonder->returnString.c_str() );
+
+    return 0;
+}
+
+int OSCControl::projectAddScoreHandler( handlerArgs )
+{
+    if( cwonderConf->oscverbose )
+        wonderlog->print( LOG_DEBUG, ( ( OSCControl* ) user_data )->getContent( path, types, argv, argc ) );
+
+    int ret = cwonder->createProject( &argv[ 0 ]->s, true );
 
     lo_address from = lo_message_get_source( msg );
     lo_send( from, "/WONDER/reply", "sis", path, ret, cwonder->returnString.c_str() );

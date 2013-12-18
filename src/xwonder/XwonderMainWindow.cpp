@@ -442,8 +442,8 @@ void XwonderMainWindow::sendOSCSourcePosition( const Source& source )
     SourceCoordinates coord = source.getCoordinatesRounded().mapGLCoordToWonderCoord();
 
     if( ! xwConf->runWithoutCwonder )
-        lo_send( xwConf->cwonderAddr, "/WONDER/source/position", "iff",
-                 source.getID(), coord.x, coord.y );
+        lo_send( xwConf->cwonderAddr, "/WONDER/source/position", "ifff",
+                 source.getID(), coord.x, coord.y, 0.005 );
 
     if( ! wasModified )
         setModified();
@@ -455,8 +455,8 @@ void XwonderMainWindow::sendOSCSourceOrientation( const Source& source )
     SourceCoordinates coord = source.getCoordinatesRounded().mapGLCoordToWonderCoord();
 
     if( ! xwConf->runWithoutCwonder )
-        lo_send( xwConf->cwonderAddr, "/WONDER/source/angle", "if",
-                 source.getID(), coord.orientation );
+        lo_send( xwConf->cwonderAddr, "/WONDER/source/angle", "iff",
+                 source.getID(), coord.orientation, 0.005 );
     
     if( ! wasModified )
         setModified();
@@ -858,6 +858,7 @@ void XwonderMainWindow::setDemoMode()
         newMenu                  ->setEnabled( false);
         newProjectWithScoreAct   ->setEnabled( false);
         newProjectWithoutScoreAct->setEnabled( false);
+        newAddProjectScoreAct    ->setEnabled( false);
         openProjectAct           ->setEnabled( false);
         saveAct                  ->setEnabled( false);
         saveAsAct                ->setEnabled( false);
@@ -887,6 +888,7 @@ void XwonderMainWindow::createActions()
 {
     newProjectWithoutScoreAct = new QAction( "New Pr&oject", this );
     newProjectWithScoreAct    = new QAction( "New Project with &Score", this );
+	newAddProjectScoreAct     = new QAction( "Add &Score to project", this );
     openProjectAct            = new QAction( "Open Pr&oject", this );
     saveAct                   = new QAction( "&Save", this );
     saveAsAct                 = new QAction( "Save &As...", this );
@@ -1012,6 +1014,7 @@ void XwonderMainWindow::createActions()
     //connect(newSnapshotAct, SIGNAL(triggered()), this, SLOT(newSnapshot()));
     connect( newProjectWithScoreAct,    SIGNAL( triggered() ), this, SLOT( newProjectWithScore() ) );
     connect( newProjectWithoutScoreAct, SIGNAL( triggered() ), this, SLOT( newProjectWithoutScore() ) );
+    connect( newAddProjectScoreAct,     SIGNAL( triggered() ), this, SLOT( newAddProjectScore() ) );
     connect( openProjectAct,            SIGNAL( triggered() ), this, SLOT( openProject() ) );
     connect( saveAct,                   SIGNAL( triggered() ), this, SLOT( save() ) );
     connect( saveAsAct,                 SIGNAL( triggered() ), this, SLOT( saveAs() ) );
@@ -1083,6 +1086,7 @@ void XwonderMainWindow::createMenus()
     newMenu = fileMenu->addMenu( "&New" );
     newMenu ->addAction( newProjectWithoutScoreAct);
     newMenu ->addAction( newProjectWithScoreAct );
+    newMenu ->addAction( newAddProjectScoreAct );
     fileMenu->addAction( openProjectAct );
     fileMenu->addSeparator();
     fileMenu->addAction( saveAct );
@@ -1256,6 +1260,18 @@ void XwonderMainWindow::newProjectWithoutScore()
 {
     projectOnlyMode = true;
     newProject();
+}
+
+void XwonderMainWindow::newAddProjectScore()
+{
+        if( ! xwConf->runWithoutCwonder )
+        {
+            if( projectOnlyMode )
+                lo_send( xwConf->cwonderAddr, "/WONDER/project/addScore", "" );
+        }
+ 	setProjectWithScoreMode();
+    projectOnlyMode = false;
+    setModified();
 }
 
 

@@ -77,7 +77,7 @@ void IRMatrixManager::loadStaticIRs()
     {
         for( int x = ( xMin / staticCacheXResolution ) * staticCacheXResolution; x <= xMax; x += staticCacheXResolution )
         {
-	    ImpulseResponse* IR = new ImpulseResponse( getFileName( x, y ), IRPartitionSize, maxNoPartitions, -1 );
+	    ImpulseResponse* IR = new ImpulseResponse( getFileName( x, y ), IRPartitionSize, maxNoPartitions, -1, 0, ImpulseResponse::STATIC_IR );
 
 	    SndfileHandle file( getFileName( x,y ).c_str() );
 	    
@@ -165,8 +165,8 @@ void IRMatrixManager::setTilt( float tilt )
 bool IRMatrixManager::manage()
 {
     pthread_mutex_lock  ( &mutex );
-        int posX = xActual;
-        int posY = yActual;
+        int posX = xCurrent;
+        int posY = yCurrent;
 
         int dirX = directionX;
         int dirY = directionY;
@@ -179,7 +179,7 @@ bool IRMatrixManager::manage()
         int x = removePos.first;
         int y = removePos.second;
         
-        //xMax + 1 means "no disposable IR found"
+        // xMax + 1 means "no disposable IR found"
         if( x != ( xMax + 1 )  )
             removeIR( x, y );
         else
@@ -199,7 +199,7 @@ bool IRMatrixManager::manage()
         //xMax + 1 means "no emtpy position found"
         if( x != ( xMax + 1 )  )
         {
-            ImpulseResponse* IR = new ImpulseResponse( getFileName( x, y ), IRPartitionSize, maxNoPartitions, -1 );
+            ImpulseResponse* IR = new ImpulseResponse( getFileName( x, y ), IRPartitionSize, maxNoPartitions, -1, 0, ImpulseResponse::DYNAMIC_IR );
 
             // don't add IR if it has no channels (not sure how this might happen though...)
             if( IR->getNoChannels() )
@@ -225,7 +225,7 @@ ImpulseResponse* IRMatrixManager::getTail( int tailPartitionSize, int noTailPart
 
     // XXX: shouldn't there be a 1 added to maxIRLength/tailPartitionSize to make up for the integer division???
     ImpulseResponse* IR = new ImpulseResponse( getTailName(), tailPartitionSize, noTailPartitions,
-                                               ( maxIRLength / tailPartitionSize ), IRPartitionSize );
+                                               ( maxIRLength / tailPartitionSize ), IRPartitionSize, ImpulseResponse::TAIL_IR );
     SndfileHandle file( getTailName().c_str() );
 
     if( IR && file.channels() )

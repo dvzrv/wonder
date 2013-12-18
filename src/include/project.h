@@ -258,6 +258,8 @@ public:
     //  calls createScenario() 
     void createProject( bool withScore );
 
+	int addScore();
+
     /// returns access to the scenario 
     Scenario* getScenario();
 

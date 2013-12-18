@@ -4,7 +4,7 @@
  *  http://swonder.sourceforge.net                                                   *
  *                                                                                   *
  *                                                                                   *
- *  Technische Universität Berlin, Germany                                           *
+ *  Technische Universitï¿½t Berlin, Germany                                           *
  *  Audio Communication Group                                                        *
  *  www.ak.tu-berlin.de                                                              *
  *  Copyright 2006-2008                                                              *
@@ -87,6 +87,7 @@ private:
     // project
     static int projectCreateWithScoreHandler   ( handlerArgs );
     static int projectCreateWithoutScoreHandler( handlerArgs );
+    static int projectAddScoreHandler          ( handlerArgs );
     static int projectLoadHandler              ( handlerArgs );
     static int projectSaveHandler              ( handlerArgs );
     static int projectSaveAsHandler            ( handlerArgs );

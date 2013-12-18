@@ -70,8 +70,8 @@ protected:
     int yMax;
 
     // need mutexlock
-    int xActual;
-    int yActual;
+    int xCurrent;
+    int yCurrent;
 
     int width; 
     int height;
@@ -88,6 +88,8 @@ private:
     //int possibleNeigh;
     int cacheRadiusX;
     int cacheRadiusY;
+
+    ImpulseResponse* currentIR;
 
     // this represents a 2D array of IRs but arranged as one linear array of adjacent rows starting with the bottom row (smallest elevation)
     // rowWidth = ( azimuthStop - azimuthStart + 1 )

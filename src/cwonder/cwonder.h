@@ -54,6 +54,7 @@ public:
     ~Cwonder();
 
     int createProject( std::string path, bool withScore );
+	int addProjectScore();
     int loadProject  ( std::string path );
     int saveProject  ();
     int saveProjectAs( std::string path );

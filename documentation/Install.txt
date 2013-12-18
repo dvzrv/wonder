@@ -15,10 +15,12 @@ libxml++2.6
 libjack
 libfftw3
 libsndfile
+libasound (alsa)
 liblo
 Qt4.4x
 c++ compiler (like gcc/g++)
 
+If you are building WONDER from source, note that some Linux distributions make a difference between library package for development (which include headers) and normal library packages. So you need to install the development packages (e.g. in Debian indicated with -dev at the end).
 
 
 ===== QUICKSTART =====
@@ -154,6 +156,8 @@ currently only data about the last installation is kept. So if you only installe
 addition to already existing other modules the data about the previous modules will not be kept
 in wonder.built.info.
 
+
+NOTE: In the directory "src/ladspa" you will find a MakeFile for building LADSPA plugins that can send OSC data to cwonder to control sources. You need to have perl installed to build.
 
 
 ===== HELP =====

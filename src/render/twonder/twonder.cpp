@@ -3,6 +3,7 @@
  *  WONDER - Wave field synthesis Of New Dimensions of Electronic music in Realtime  *
  *  http://swonder.sourceforge.net                                                   *
  *                                                                                   *
+ *  Torben Hohn, Eddie Mond, Marije Baalman                                          *
  *                                                                                   *
  *  Technische Universität Berlin, Germany                                           *
  *  Audio Communication Group                                                        *
@@ -63,17 +64,24 @@ jackpp::Client* jackClient;
 
 //--------------------------------SpkArray------------------------------------//
 
+/**
+ * @brief SpkArray holds all speakers in a Vector. 
+ */
 class SpkArray : public vector< Speaker* >
 {
 public:
         SpkArray( string filename );
         ~SpkArray();
 
+		/// trunk has an extra constructor with just the float parameters
 private:
         void addSpeakers( Segment* segment );
 };
 
 
+
+ ///
+ /// @brief Constructs a SpkArray reading from file.
 SpkArray::SpkArray( string filename ) 
 {
     SegmentArray segarr( filename );
@@ -84,7 +92,8 @@ SpkArray::SpkArray( string filename )
         addSpeakers( *segiter );
 }
 
-
+///
+/// @brief Adds a segment of speakers to the array..
 void SpkArray::addSpeakers( Segment* segment )
 {
     float    cosAlpha       = 1.0;
@@ -131,6 +140,9 @@ SpkArray::~SpkArray()
 //--------------------------------SourceAggregate-----------------------------//
 
 //A Source with jackport, DelayLine and sourceType
+/**
+ * @brief Aggregates Source with jackport, DelayLine, sourceType.
+ */ 
 class SourceAggregate
 {
 public:
@@ -175,6 +187,9 @@ SourceAggregate::~SourceAggregate()
 
 //--------------------------------SourceArray---------------------------------//
 
+/**
+ * @brief To hold all the (sound) sources.
+ */
 class SourceArray : public vector< SourceAggregate* >
 {
 public:
@@ -182,7 +197,8 @@ public:
     ~SourceArray();
 };
 
-
+///
+/// @brief Constructs a SourceArray with a number of point sources at default coordinates (0,1). 
 SourceArray::SourceArray( int noSources )
 {
     for( int i = 0; i < noSources; ++i )
@@ -219,6 +235,9 @@ RTCommandEngine* realtimeCommandEngine;
 
 //--------------------------------MoveCommand---------------------------------//
 
+/**
+ * @brief Is a QCommand to move a PositionSource through space.
+ */
 class MoveCommand : public Command
 {
 public:
@@ -226,7 +245,7 @@ public:
         { 
 	    destination = v;
 	    sourceId    = id; 
-	    duration    = durationInSamples;
+	    duration    = durationInSamples; ///NOTE: was previously divided through the jackclient buffer size?
 	}
 
         void execute();
@@ -249,6 +268,7 @@ void MoveCommand::execute()
                 positionSource->position.setCurrentValue( destination );
             else                                // is a point source
                 positionSource->position.setTargetValue( destination , duration );
+			  ///NOTE: had a check for (duration < 1 ? 1 : duration )
         }
     }
 }
@@ -259,6 +279,9 @@ void MoveCommand::execute()
 
 //--------------------------------AngleCommand--------------------------------//
 
+/**
+ * @brief Is a QCommand to move a PlaneWave to a new angle.
+ */
 class AngleCommand : public Command
 {
 public:
@@ -266,7 +289,7 @@ public:
         {
 	    angle     = af;
 	    sourceId  = id; 
-	    duration  = durationInSamples; 
+	    duration  = durationInSamples; ///NOTE: same as point source
 	}
 
         void execute();
@@ -286,6 +309,7 @@ void AngleCommand::execute()
         if( planeWave )
         {
             planeWave->angle.setTargetValue( angle * M_PI * 2 / 360.0,  duration );
+			///NOTE: same as point source
         }
     }
 }
@@ -296,6 +320,9 @@ void AngleCommand::execute()
 
 //--------------------------------TypeChangeCommand---------------------------//
 
+/**
+ * @brief Is a QCommand to change a sources type to another.
+ */
 class TypeChangeCommand : public Command 
 {
 public:
@@ -361,6 +388,9 @@ TypeChangeCommand::~TypeChangeCommand()
 
 //------------------------------DopplerChangeCommand--------------------------//
 
+/**
+ * @brief Is a QCommand to turn the Doppler effect on and off.
+ */
 class DopplerChangeCommand : public Command 
 {
 public:
@@ -404,6 +434,7 @@ int oscSrcPositionHandler( handlerArgs )
     if( argv[ 0 ]->i >= twonderConf->noSources  ||  argv[ 0 ]->i < 0 )
         return -1;
 
+	// if source is not active, ignore the command
     if( ! sources->at( argv[ 0 ]->i )->active )
         return 0;
     
@@ -415,14 +446,14 @@ int oscSrcPositionHandler( handlerArgs )
 
     // xxx legacy support for deprecated z coordinate xxxxxxxxxxxxxxxxxxx // 
     // note that time and duration are also flipped in the newer versions //
+	//NOTE: this is where the z-coordinate could be introduced again for multi-z-level arrays
     if( argc == 6 )
     {
         time     = argv[ 4 ]->f;
         duration = argv[ 5 ]->f;
     }
     // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx //
-
-    if( argc == 5 )
+    else if( argc == 5 )
     {
         duration = argv[ 3 ]->f;
         time     = argv[ 4 ]->f;
@@ -447,7 +478,7 @@ int oscSrcPositionHandler( handlerArgs )
 
     MoveCommand* moveCmd = new MoveCommand( newPos, 
                                             sourceId,
-                                            TimeStamp( ( wonder_frames_t ) ( time * ( float ) twonderConf->sampleRate ) ),
+                                            TimeStamp( time ), // conversion to sampletime happens in TimeStamp( float );
                                             ( int ) ( duration * twonderConf->sampleRate ) );
     realtimeCommandEngine->put( moveCmd );
 
@@ -488,6 +519,7 @@ int oscSrcAngleHandler( handlerArgs )
     }
 
     AngleCommand* angleCmd = new AngleCommand( newAngle, sourceId, TimeStamp( time ), ( int ) ( duration * twonderConf->sampleRate ) );
+	/// NOTE: why is time handled differently here?? in srcPos it is multiplied by the samplerate
     realtimeCommandEngine->put( angleCmd );
 
     // preserve angle information for type switching of sources if source is of type pointsource
@@ -497,7 +529,9 @@ int oscSrcAngleHandler( handlerArgs )
     return 0;
 }
 
-
+/**
+ * @brief Is a QCommand to change a sources type to another.
+ */
 int oscSrcTypeHandler( handlerArgs )
 {
     if( argv[ 0 ]->i >= twonderConf->noSources  ||  argv[ 0 ]->i < 0  || argv[ 1 ]->i < 0 || argv[ 1 ]->i > 1 )
@@ -525,7 +559,8 @@ int oscSrcTypeHandler( handlerArgs )
                   << std::endl;
     }
 
-    TypeChangeCommand* typeCmd = new TypeChangeCommand( sourceId, newType, time );
+    TypeChangeCommand* typeCmd = new TypeChangeCommand( sourceId, newType, TimeStamp( time ) );
+	/// NOTE: here the time is handled again differently??
     realtimeCommandEngine->put( typeCmd );
 
     return 0;
@@ -554,7 +589,8 @@ int oscSrcDopplerHandler( handlerArgs )
                   << std::endl;
     }
 
-    DopplerChangeCommand* dopplerCmd = new DopplerChangeCommand( sourceId, useDoppler, time );
+    DopplerChangeCommand* dopplerCmd = new DopplerChangeCommand( sourceId, useDoppler, TimeStamp( time ) );
+	/// NOTE: time is handled again as with the type change
     realtimeCommandEngine->put( dopplerCmd );
 
     return 0;
@@ -633,6 +669,7 @@ int oscNoSourcesHandler( handlerArgs )
 int oscRenderPolygonHandler( handlerArgs )
 {
     // parse incoming points
+
     // argv[ 0 ] is the roomname, drop it, we don't need that
     // get number of points 
     int noPoints = argv[ 1 ]->i;
@@ -652,6 +689,31 @@ int oscRenderPolygonHandler( handlerArgs )
     return 0;
 }
 
+int oscElevationHandler( handlerArgs )
+{
+    // parse incoming points
+
+    // argv[ 0 ] is the roomname, drop it, we don't need that
+    // get number of points 
+
+    // iterate over all points and store them
+    twonderConf->elevationY1 = argv[ 1 ]->f;
+    twonderConf->elevationZ1 = argv[ 2 ]->f;
+    twonderConf->elevationY2 = argv[ 3 ]->f;
+    twonderConf->elevationZ2 = argv[ 4 ]->f;
+    
+    // TODO:calculate elevation of speakers
+    twonderConf->slope = ( twonderConf->elevationZ2 - twonderConf->elevationZ1 ) / ( twonderConf->elevationY2 - twonderConf->elevationY1 );
+  
+    if ( fabs( twonderConf->slope ) > 1e-3 ){
+	twonderConf->hasSlope = true;
+    } else {
+	twonderConf->hasSlope = false;
+    }
+    
+    return 0;
+}
+
 int oscGenericHandler( handlerArgs )
 {
     cout << endl << "[twonder]: received unknown osc message: " << path << endl;
@@ -664,6 +726,7 @@ int oscGenericHandler( handlerArgs )
 
 //-------------------------------Audio processing----------------------------//
 
+/// this is the function called by the JACK thread for realtime audio processing
 int process( jack_nframes_t nframes, void* arg )
 {
     static int printor = jackClient->getSampleRate() / jackClient->getBufferSize();  // for debugging
@@ -726,6 +789,7 @@ int process( jack_nframes_t nframes, void* arg )
                 c2.print();
             }
             
+            /// doppler on/off is now a boolean, no longer a threshold, as in trunk
             if( ! ( *sourcesIt )->source->hasDopplerEffect() )
             {
                 if( ! printor )
@@ -763,15 +827,18 @@ int startDaemon()
 
     pid = fork();
 
+	///NOTE: version in trunk checks for CHILD, not 0...
     if( pid  < 0 )
 	exit( EXIT_FAILURE );
 
     if( pid > 0 )
 	exit( EXIT_SUCCESS );
 
+    ///NOTE: version in trunk checks for ERROR not 0...
     if( setsid() < 0 )
         exit( EXIT_FAILURE  );
 
+	/// change to root in file system
     if( ( chdir( "/" ) ) < 0 ) 
         exit( EXIT_FAILURE  );
 
@@ -836,6 +903,7 @@ int cleanDaemon()
 
 void exitCleanupFunction()
 {
+    cleanDaemon();
     if( jackClient )
         jackClient->deactivate();
 
@@ -973,7 +1041,7 @@ int main( int argc, char** argv )
     }
     catch( OSCServer::EServ )
     {
-        cerr << "[twonder] Could not create server, maybe the server( using the same port ) is already running?" << endl;                   
+        cerr << "[twonder] Could not create osc server, maybe a server ( using the same port ) is already running?" << endl;                   
         cleanDaemon();        
         exit( EXIT_FAILURE );
     }
@@ -995,6 +1063,7 @@ int main( int argc, char** argv )
     oscServer->addMethod( "/WONDER/source/dopplerEffect",      "iif",    oscSrcDopplerHandler );
     oscServer->addMethod( "/WONDER/global/maxNoSources",       "i",      oscNoSourcesHandler );
     oscServer->addMethod( "/WONDER/global/renderpolygon",      NULL,     oscRenderPolygonHandler );
+    oscServer->addMethod( "/WONDER/global/elevation",          NULL,     oscElevationHandler );    
     oscServer->addMethod( "/WONDER/stream/render/ping",        "i",      oscPingHandler );
     oscServer->addMethod( NULL,                                NULL,     oscGenericHandler );  
     oscServer->start();
@@ -1038,8 +1107,9 @@ int main( int argc, char** argv )
         }
     }
     
-    if( twonderConf->daemon )
-        cleanDaemon();        
+    /// NOTE: does this make sense here?
+//     if( twonderConf->daemon )
+//         cleanDaemon();        
 
     // cleanup before exiting 
     exitCleanupFunction();

@@ -257,9 +257,3 @@ void DelayLine::get( float* samples, unsigned int noSamples, int sampleDelay )
             readPos = 0;
     }
 }
-
-
-DelayLine::DelayLine( const DelayLine& other )
-{
-    // just preventing copying
-}

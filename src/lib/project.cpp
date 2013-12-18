@@ -106,6 +106,15 @@ void Project::createProject( bool withScore )
     createScenario();
 }
 
+int Project::addScore()
+{
+	if ( scoreFileName != "" ){
+		scoreFileName = name + "_score";
+    	rootNode->set_attribute( "scorefile", scoreFileName );
+		return 0;
+	}
+	return -1;
+}
 
 int Project::createScenario()
 {

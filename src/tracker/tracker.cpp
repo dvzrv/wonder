@@ -61,6 +61,30 @@ int oscTrackerOmitHandler( handlerArgs )
     return 0;
 }
 
+int oscTrackerResetHandler( handlerArgs )
+{
+    // did not receive a '1' via osc /WONDER/tracker/reset, so  do nothing	
+    if( argv[ 0 ]->i != 1 ) 
+        return -1;
+    
+    // reset tracker:
+    // userdata is pointer to 1st element of array w. 2 pointers to 1st element of 2 floatarrays[3]
+    float **pp_reset_args=(float **)user_data; 
+  
+    float *p_state  = *pp_reset_args;  
+    float *p_offset = *(pp_reset_args+1);
+
+    // now overwrite "offset" w. "state"  (memcpy(*dest, *src, ,bytes))
+    memcpy( p_offset, p_state,  3* sizeof( float ) );
+    
+    if( trackerConf->verbose) 
+    {
+        printf( "New offset: %7.2f  %7.2f  %7.2f   \n\r", *p_offset, *(p_offset+1), *(p_offset+2) );
+        std::cout << endl << "Tracker resetted via OSC." <<  std::endl;
+    }
+    return 0;
+}
+
 int oscGenericHandler( handlerArgs )
 {
     cout << endl << "[tracker]: received unknown osc message: " << path << endl;
@@ -118,7 +142,14 @@ int main( int argc, char** argv )
         exit( EXIT_FAILURE );
     }
 
+
+    // collect references for oscTrackerResetHandler
+    float *p_reset_args[2];
+    p_reset_args[0]=&state[0];
+    p_reset_args[1]=&offset[0];
+
     oscServer->addMethod( "/WONDER/tracker/omit", "i", oscTrackerOmitHandler );
+    oscServer->addMethod( "/WONDER/tracker/reset", "i", oscTrackerResetHandler,p_reset_args);
     oscServer->addMethod( NULL, NULL, oscGenericHandler );  
     oscServer->start();
     
@@ -127,9 +158,9 @@ int main( int argc, char** argv )
     trackerConf->print();
     cout << endl;
 
-
     //open connection to the tracker and initialise the tracker
     TrackerState* tracker = new TrackerState();
+
     if( trackerConf->trackerType == ITRACKER ) 
         tracker->initItracker();
     else
@@ -164,6 +195,7 @@ int main( int argc, char** argv )
         ++messageCounter;
         
         // preserve old position for comparison
+        // memcpy ( dest *, src *, size )
         memcpy ( state_old, state, sizeof( state_old ) );
         
         // get new position
@@ -184,7 +216,6 @@ int main( int argc, char** argv )
                 if( diffIndex == noTimes )
                     break;
             }
-
 
             // send new tracker position via OSC but only if the position changed and the amount of change is valid.
             // always send data when in latency test mode to sync amount of timedata with receiving osc client
@@ -222,7 +253,9 @@ int main( int argc, char** argv )
             }
         }
       
-        usleep( 1 );
+        // itracker is much to busy while "usleep( 1 );" 'though ptracker is fine with it
+        usleep( trackerConf->wait );
+
         key = kbhit();
         //wait for keyboard hit
         if( key != 0 )
@@ -232,10 +265,11 @@ int main( int argc, char** argv )
                 //reset tracker to 0.0, 0.0, 0.0    
                 case 'o':
                 case 'O': 
-                    memcpy( offset, state, sizeof( offset ) );
+                     // memcopy(*dest, *src, ,bytes)
+                     memcpy( offset, state, sizeof( offset ) );
                     printf( "New Offset: %7.2f   %7.2f   %7.2f \n\r", offset[ 0 ], offset[ 1 ], offset[ 2 ] );
                     tracker->showTrackerPos( zerovec  );
-                break;
+                    break;
                 //quit tracker    
                 case 'q':
                 case 'Q':

@@ -36,11 +36,6 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-bool FftwBuf::plansMade       = false;
-fftwf_plan FftwBuf::fft_plan  = NULL;
-fftwf_plan FftwBuf::ifft_plan = NULL;
-int  FftwBuf::instanceCounter = 0;
-
 FftwBuf::FftwBuf( size_t bufferSize ) : size( bufferSize )
 {
     // set the alignment of allocated memory
@@ -71,7 +66,7 @@ FftwBuf::FftwBuf( size_t bufferSize ) : size( bufferSize )
     samples = reinterpret_cast< float* >( mem );
 
     // initialize the plans for the in-place fft and ifft
-    if( ! plansMade )
+    //if( ! plansMade )
     {
          fft_plan = fftwf_plan_dft_r2c_1d( bufferSize, samples, reinterpret_cast< fftwf_complex* > ( samples ), FFTW_MEASURE );
         ifft_plan = fftwf_plan_dft_c2r_1d( bufferSize, reinterpret_cast< fftwf_complex* > ( samples ), samples, FFTW_MEASURE );
@@ -84,27 +79,14 @@ FftwBuf::FftwBuf( size_t bufferSize ) : size( bufferSize )
 
         plansMade = true;
     }
-
-    id = ++instanceCounter;
-#ifndef NDEBUG
-    //cerr << "FftwBuf::instanceCounter" << instanceCounter << endl;
-#endif
 }
 
 
 FftwBuf::~FftwBuf()
 {
-#ifndef NDEBUG
-    //cerr << "~FftwBuf::id " << id << endl;
-    //cerr << "~FftwBuf::instanceCounter " << instanceCounter << endl;
-#endif
-    if( --instanceCounter == 0 )
+    if( plansMade )
     {
-#ifndef NDEBUG
-        cerr << "destroy fft plan: " << fft_plan << endl;
-        cerr << "destroy ifft plan: " << ifft_plan << endl;
-#endif
-    //XXX: assuming that the plans exist,  so far I found no way to check this
+        //XXX: assuming that the plans exist,  so far I found no way to check this
         fftwf_destroy_plan( fft_plan );
         fftwf_destroy_plan( ifft_plan );
         plansMade = false;
@@ -112,9 +94,6 @@ FftwBuf::~FftwBuf()
 
     if( samples )
     {
-#ifndef NDEBUG
-        //cerr << "free: " << samples << endl;
-#endif
         free( samples );
         samples = NULL;
     }
@@ -126,7 +105,6 @@ void FftwBuf::fft()
     fftwf_execute( fft_plan );
     complex_to_sse_order( samples, getSSESize() );
 }
-
 
 void FftwBuf::ifft()
 {
@@ -189,14 +167,4 @@ void FftwBuf::print()
 
         cout << ")" << endl;
     }
-}
-
-FftwBuf::FftwBuf( const FftwBuf& other )
-{
-    // just preventing copying
-}
-
-void /*FftwBuf&*/ FftwBuf::operator = ( const FftwBuf& other )
-{
-    // just preventing copying
 }

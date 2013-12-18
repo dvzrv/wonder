@@ -3,6 +3,7 @@
  *  WONDER - Wave field synthesis Of New Dimensions of Electronic music in Realtime  *
  *  http://swonder.sourceforge.net                                                   *
  *                                                                                   *
+ *  Torben Hohn, Eddie Mond, Marije Baalman                                          *
  *                                                                                   *
  *  Technische Universität Berlin, Germany                                           *
  *  Audio Communication Group                                                        *
@@ -34,11 +35,13 @@
 Source::~Source()
 { }
 
+
 PositionSource::PositionSource( const Vector2D& p ) : position( p )
 { }
 
+// ------- point source -------
 
-bool PointSource::isFocused( const Vector2D& sourcePos ) const
+bool PointSource::isFocused( const Vector2D& sourcePos )
 {
     if( twonderConf->ioMode == IOM_ALWAYSOUT )
         return false;
@@ -46,26 +49,30 @@ bool PointSource::isFocused( const Vector2D& sourcePos ) const
     if( twonderConf->ioMode == IOM_ALWAYSIN ) 
         return true;
 
+    if ( didFocusCalc ){
+	return wasFocused;
+    }
+
     int noPoints = twonderConf->renderPolygon.size();
-    float xSrc = sourcePos[ 0 ]; 
-    float ySrc = sourcePos[ 1 ];
-    float xnew;
-    float ynew;
-    float xold;
-    float yold;
-    float x1;
-    float y1;
-    float x2;
-    float y2;
+    double xSrc = (double) sourcePos[ 0 ]; 
+    double ySrc = (double) sourcePos[ 1 ];
+    double xnew;
+    double ynew;
+    double xold;
+    double yold;
+    double x1;
+    double y1;
+    double x2;
+    double y2;
     bool inside = false;
 
-    xold = twonderConf->renderPolygon[ noPoints - 1 ][ 0 ];
-    yold = twonderConf->renderPolygon[ noPoints - 1 ][ 1 ];
+    xold = (double) twonderConf->renderPolygon[ noPoints - 1 ][ 0 ];
+    yold = (double) twonderConf->renderPolygon[ noPoints - 1 ][ 1 ];
 
     for( int i = 0 ; i < noPoints ; ++i )
     {
-          xnew = twonderConf->renderPolygon[ i ][ 0 ];
-          ynew = twonderConf->renderPolygon[ i ][ 1 ];
+          xnew = (double) twonderConf->renderPolygon[ i ][ 0 ];
+          ynew = (double) twonderConf->renderPolygon[ i ][ 1 ];
           
           if( xnew > xold ) 
           {
@@ -91,10 +98,21 @@ bool PointSource::isFocused( const Vector2D& sourcePos ) const
           yold = ynew;
      }
 
-
+    didFocusCalc = true;
+    wasFocused = inside;
     return inside;
 }
 
+
+float hanning( float x ) {
+	return 1-(0.5*cosf( M_PI * x ) + 0.5);
+}
+
+///NOTE: this "cleaned up"-version was scrubbed of some essential parts
+/// - slope correction
+/// - transition margin for focused sources (focus range -> focus limit) -> fixed now
+/// - global translate (necessary? --> was used for headphone modus, which could be interesting to re-implement)
+/// 
 DelayCoeff PointSource::calcDelayCoeff( const Speaker& speaker, const Vector2D& sourcePos )
 {
     Vector2D srcToSpkVec   = speaker.getPos() - sourcePos; 
@@ -102,6 +120,11 @@ DelayCoeff PointSource::calcDelayCoeff( const Speaker& speaker, const Vector2D& 
     float srcToSpkDistance = srcToSpkVec.length(); 
     float delay            = srcToSpkDistance;
     float cosphi           = normalProjection / srcToSpkDistance;
+    float window = 1.0; // used for interpolation out off focuslimit
+    float inFocus; // variable to calculate whether within the focus margin
+    
+    #define focusAngularMax 0.75
+    #define focusAngularMaxRange 0.1
 
     // define a circular area around the speakers in which we adjust the amplitude factor to get a smooth
     // transition when moving through the speakers ( e.g. from focussed to non-focussed sources )
@@ -115,18 +138,43 @@ DelayCoeff PointSource::calcDelayCoeff( const Speaker& speaker, const Vector2D& 
         if( srcToSpkDistance > twonderConf->focusLimit )
             return DelayCoeff( 0.0, 0.0 );
 
+	if ( cosphi > focusAngularMax ) // if angle too large with the speaker array, we don't play this back to avoid too early arriving contributions to the wave front
+	    return DelayCoeff( 0.0, 0.0 );
+	
+	inFocus = twonderConf->focusLimit - srcToSpkDistance;
+	if ( inFocus < twonderConf->focusMargin ){ // fade out within (fadelimit - fademargin up to fadelimit
+	    window = hanning( inFocus / twonderConf->focusMargin );
+	}
+	inFocus = focusAngularMax - cosphi;
+	if ( inFocus < focusAngularMaxRange ){ // fade out within (fadelimit - fademargin up to fadelimit
+	    window = window * hanning( inFocus / focusAngularMaxRange );
+	}
+
         // don't render this source if it in front of a this speaker 
         // but is not a focussed source
         if( ( ! isFocused( sourcePos ) ) && ( srcToSpkDistance > transitionRadius ) )
             return DelayCoeff( 0.0, 0.0 );
-
+	if ( twonderConf->hasSlope ){
+	  // we need a slope correction in case the speaker array has a slope
+	  Vector3D src3D( sourcePos[0], sourcePos[1], 
+			    sourcePos[1] < twonderConf->elevationY1 ? 
+			      twonderConf->elevationZ1 : 
+			      (twonderConf->elevationZ1 + (sourcePos[1]-twonderConf->elevationY1) * (twonderConf->slope) ) 
+	  );
+	  Vector3D diff3D = speaker.get3DPos() - src3D;
+	  normalProjection = diff3D * speaker.get3DNormal();
+	  srcToSpkDistance = diff3D.length();
+	  delay = srcToSpkDistance;
+	}
+      
         // if rendering focussed sources we need to use a "negative delay",
         // i.e. make use of a certain amount of already added pre delay
         // and so we don't get any phase inversion we only use positve numbers
         // for our calculations
-        delay            = - delay;
-        cosphi           = - cosphi;
-        normalProjection = - normalProjection;
+        delay            = - delay; // yes, negative delay, will be substracted effectively from the predelay
+	//NOTE: I'm not sure if these should be negative... (MB)
+        cosphi           = - cosphi; // yes, this one is absolute
+     //   normalProjection = - normalProjection; // this one is not used anymore further on
     } 
 
     float amplitudeFactor = 0.0;
@@ -134,18 +182,20 @@ DelayCoeff PointSource::calcDelayCoeff( const Speaker& speaker, const Vector2D& 
     // calculate amplitudefactor according to being in- or outside the transition area around the speakers
     if( srcToSpkDistance > transitionRadius )
     {
-        amplitudeFactor = ( sqrtf( twonderConf->reference / ( twonderConf->reference + normalProjection ) ) ) * ( cosphi / sqrtf( srcToSpkDistance ) );
+	// delay is a signed version of srcSpkDistance
+	amplitudeFactor = ( sqrtf( twonderConf->reference / ( twonderConf->reference + delay ) ) ) * ( cosphi / sqrtf( srcToSpkDistance ) );
+        //amplitudeFactor = ( sqrtf( twonderConf->reference / ( twonderConf->reference + normalProjection ) ) ) * ( cosphi / sqrtf( srcToSpkDistance ) );
     }
     else
     {
 
         float behind = sqrtf( twonderConf->reference / ( twonderConf->reference + transitionRadius ) ) / sqrtf( transitionRadius );
         float focuss = sqrtf( twonderConf->reference / ( twonderConf->reference - transitionRadius ) ) / sqrtf( transitionRadius );
-
-        amplitudeFactor = behind + ( transitionRadius - normalProjection ) / ( 2 * transitionRadius) * ( focuss - behind );
+	// delay is a signed version of srcSpkDistance, so the point is closer to focus when delay < 0
+        amplitudeFactor = behind + ( transitionRadius - delay ) / ( 2 * transitionRadius) * ( focuss - behind );
     }
-
-    return DelayCoeff( delay, amplitudeFactor * speaker.getCosAlpha() );
+    // speaker.getCosAlpha is the amplitude correction for the elevation compensation
+    return DelayCoeff( delay, amplitudeFactor * speaker.getCosAlpha() * window );
 }
 
 
@@ -163,6 +213,7 @@ DelayCoeff PointSource::getTargetDelayCoeff( const Speaker& speaker, wonder_fram
 
 void PointSource::doInterpolationStep( wonder_frames_t blocksize )
 {
+    didFocusCalc = false;
     position.doInterpolationStep( blocksize );
 }
 
@@ -170,6 +221,7 @@ void PointSource::doInterpolationStep( wonder_frames_t blocksize )
 PointSource::~PointSource()
 { }
 
+//--- plane wave ----
 
 DelayCoeff PlaneWave::calcDelayCoeff( const Speaker& speaker, const Angle& ang )
 {
@@ -198,9 +250,10 @@ DelayCoeff PlaneWave::getTargetDelayCoeff( const Speaker& speaker, wonder_frames
     return calcDelayCoeff( speaker, angle.getTargetValue( blocksize ) );
 }
 
-
+/// NOTE: original also applies interpolation step to position?
 void PlaneWave::doInterpolationStep( wonder_frames_t blocksize )
 {
+    position.doInterpolationStep( blocksize ); // re-added by MB; august 2010
     angle.doInterpolationStep( blocksize );
 }
 

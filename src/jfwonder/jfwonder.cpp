@@ -4,7 +4,7 @@
  *  http://swonder.sourceforge.net                                                   *
  *                                                                                   *
  *                                                                                   *
- *  Technische Universität Berlin, Germany                                           *
+ *  Technische Universitï¿½t Berlin, Germany                                           *
  *  Audio Communication Group                                                        *
  *  www.ak.tu-berlin.de                                                              *
  *  Copyright 2006-2008                                                              *
@@ -59,7 +59,8 @@ bool start = false;
 WonderLog* wonderlog;
 
 // the control rate
-#define CONTROLRATE 1024
+// #define CONTROLRATE 1024
+// now a command line option
 
 // used when running daemonized
 std::string path_pidfile;
@@ -272,7 +273,7 @@ int jackProcess( jack_nframes_t nframes, void* arg )
 
     frame = pos.frame;
 
-    if( ( frame - lastFrame ) >= CONTROLRATE )
+    if( ( frame - lastFrame ) >= jfConf->controlRate )
     {
         lastFrame = pos.frame; 
         frameQueue->put( frame );

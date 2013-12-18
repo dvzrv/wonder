@@ -7,11 +7,11 @@ Marije Baalman
 Tobias Blaschke
 Torben Hohn
 Thilo Koch
-Eddie Mond
+Hans-Joachim Mond
 Daniel Plewe 
 Simon Schampijer
 
 Technische Universität Berlin, Germany
  *  Audio Communication Group          *
  *  www.ak.tu-berlin.de                *
- *  Copyright 2006-2008  		       *
+ *  Copyright 2006-2008 	       *

@@ -3,6 +3,7 @@
  *  WONDER - Wave field synthesis Of New Dimensions of Electronic music in Realtime  *
  *  http://swonder.sourceforge.net                                                   *
  *                                                                                   *
+ *  Torben Hohn, Eddie Mond, Marije Baalman                                          *
  *                                                                                   *
  *  Technische Universität Berlin, Germany                                           *
  *  Audio Communication Group                                                        *
@@ -35,9 +36,15 @@
 #include <iostream>
 
 // This is the maximum distance a Source can be in front of a speaker without letting the factor calculation explode. 
-//XXX: what is the unit? m? 
+// unit is meters
 const float deltaR = 30.0;
 
+/**
+ * @brief DelayCoeff is an index into a DelayLine. Consists of @a delay and @a factor.
+ *
+ * A DelayCoeff models a dirac impuls on an ImpulseResponse. The @a delay is the t-Position on the response.
+ * And the @a factor is the "height" of the dirac. Hey.. This is digital... So it IS the height ;)
+ */
 class DelayCoeff 
 {
 public:
@@ -49,6 +56,16 @@ public:
     {
         return delay; 
     }
+
+	/**
+	 * @brief Get the delay in samples.
+	 *
+	 * @param negdelay  The maximum negative delay which is handled, before entering the magic non casual space. Where the most evil sounding distortions occur.
+	 *                 This must be reality distortion or something ;)
+	 * 
+	 * Calculate the sample delay at SampleRate 44100 and Velocity of sound 340. Also makes the delay a casual delay by
+	 * adding the @a negdelay which is in meters.
+	 */
 
     unsigned int getSampleDelayRounded( float preDelay );
     float        getSampleDelay       ( float preDelay );

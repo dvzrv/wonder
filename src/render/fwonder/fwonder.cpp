@@ -85,7 +85,9 @@ void SetNewIRCommand::execute()
 
     // remove the old impulse response (if present) of this source.
     if( sourceArray->at( sourceID )->oldIR )
+    {
         sourceArray->at( sourceID )->oldIR = NULL;
+    }
 }
 
 //-------------------------end of SetNewIRCommand-----------------------------//
@@ -158,9 +160,9 @@ int oscMoveHandler( handlerArgs )
 
         ImpulseResponse* fittingIR = source.IRManager->getBestIR();
 
-        if( fittingIR && ( fittingIR != source.currentIR ) ) 
+        if( fittingIR && ( fittingIR != source.scheduledIR ) ) 
         {
-            source.currentIR = fittingIR;
+            source.scheduledIR = fittingIR;
             realtimeCommandEngine->put( new SetNewIRCommand( i, fittingIR ) );
         } 
         ++i;
@@ -213,7 +215,6 @@ int process( jack_nframes_t nframes, void* arg )
 
     SourceArray::iterator sourceIt;
 
-    //realtimeCommandEngine->eval_cmds( jackClient->getFrameTime() );
     realtimeCommandEngine->evaluateCommands( ( wonder_frames_t ) 15 );
 
     // Get input samples from JACK, put the data into the delayline.
@@ -226,6 +227,7 @@ int process( jack_nframes_t nframes, void* arg )
         source->inputLine->get( source->paddingBuffer->getSamples(), nframes );
 
         source->paddingBuffer->zeroPad2ndHalf();
+
         source->paddingBuffer->fft();
     }
 
@@ -257,19 +259,24 @@ int process( jack_nframes_t nframes, void* arg )
     {
         SourceAggregate* source = *sourceIt;
 
-        if( fwonderConf->doCrossfades  &&  source->crossfadeInbetweenIR  &&  ! ( source->crossfadeInbetweenIR->killed )  &&  ( source->crossfadeInbetweenIR->getNoChannels() == 2 ) )
+        if(      fwonderConf->doCrossfades 
+            &&     source->crossfadeInbetweenIR 
+            && ! ( source->crossfadeInbetweenIR->killed ) 
+            &&   ( source->crossfadeInbetweenIR->getNoChannels() == 2 ) )
         {
             ImpulseResponse* thisIR = source->crossfadeInbetweenIR;
+
             for( int i = 0; i < thisIR->getNoChannels(); ++i )
             {
                 ImpulseResponseChannel& impulseChannel = thisIR->getChannel( i );
-        	ComplexDelayLine&       outputLine     = *( ( *outputArray ).at( i )->fadeIn2ComplexLine );
+        	ComplexDelayLine&       outputLine     = *( outputArray->at( i )->fadeIn2ComplexLine );
 
         	for( int j = 0; j < thisIR->getNoPartitions(); ++j )
                 {
         	    FftwBuf* IRPartBuf    = impulseChannel [ j ];
         	    FftwBuf* outputBuffer = outputLine     [ j ];
-        	    complex_mul( source->paddingBuffer->getSamples(), IRPartBuf->getSamples(), outputBuffer->getSamples(), source->paddingBuffer->getSSESize() ); 
+        	    complex_mul( source->paddingBuffer->getSamples(), IRPartBuf->getSamples(), outputBuffer->getSamples(),
+                                 source->paddingBuffer->getSSESize() ); 
         	}
             }
 
@@ -280,13 +287,14 @@ int process( jack_nframes_t nframes, void* arg )
                 for( int i = 0; i < thisIR->getNoChannels(); ++i )
                 {
                     ImpulseResponseChannel& impulseChannel = thisIR->getChannel( i );
-                    ComplexDelayLine&       outputLine     = *( ( * outputArray ).at( i )->fadeOut2ComplexLine );
+                    ComplexDelayLine&       outputLine     = *( outputArray->at( i )->fadeOut2ComplexLine );
 
         	    for( int j = 0; j < thisIR->getNoPartitions(); ++j )
                     {
         		FftwBuf* IRPartBuffer = impulseChannel[ j ];
         		FftwBuf* outputBuffer = outputLine    [ j ];
-        		complex_mul( source->paddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(), source->paddingBuffer->getSSESize() ); 
+        		complex_mul( source->paddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(),
+                                     source->paddingBuffer->getSSESize() ); 
         	    }
         	}
             }
@@ -305,13 +313,14 @@ int process( jack_nframes_t nframes, void* arg )
                 for( int i = 0; i < thisIR->getNoChannels(); ++i )
                 {
                     ImpulseResponseChannel& impulseChannel = thisIR->getChannel( i );
-                    ComplexDelayLine&       outLine        = *( ( * outputArray ).at( i )->fadeInComplexLine );
+                    ComplexDelayLine&       outLine        = *( outputArray->at( i )->fadeInComplexLine );
 
                     for( int j = 0; j < thisIR->getNoPartitions(); ++j ) 
                     {
                         FftwBuf* IRPartBuffer = impulseChannel[ j ];
                         FftwBuf* outputBuffer = outLine       [ j ];
-                        complex_mul( source->paddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(), source->paddingBuffer->getSSESize() ); 
+                        complex_mul( source->paddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(),
+                                     source->paddingBuffer->getSSESize() ); 
                     }
                 }
             }
@@ -323,13 +332,14 @@ int process( jack_nframes_t nframes, void* arg )
                 for( int i = 0; i < thisIR->getNoChannels(); ++i )
                 {
                     ImpulseResponseChannel& impulseChannel = thisIR->getChannel( i );
-                    ComplexDelayLine&       outLine     = *( ( *outputArray ).at( i )->fadeOutComplexLine );
+                    ComplexDelayLine&       outLine     = *( outputArray->at( i )->fadeOutComplexLine );
 
                     for( int j = 0; j < thisIR->getNoPartitions(); ++j )
                     {
                 	FftwBuf* IRPartBuffer = impulseChannel[ j ];
                 	FftwBuf* outputBuffer = outLine       [ j ];
-                	complex_mul( source->paddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(), source->paddingBuffer->getSSESize() ); 
+                	complex_mul( source->paddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(),
+                                     source->paddingBuffer->getSSESize() ); 
                     }
                 }
             }
@@ -352,31 +362,35 @@ int process( jack_nframes_t nframes, void* arg )
                         // second last partition of IR
                         if( fwonderConf->doTailCrossfades  &&  ( j == thisIR->getNoPartitions() - 2 ) )
                         {
-                            ComplexDelayLine& outFadeOutLine = *( ( *outputArray ).at( i )->fadeOutComplexLine );
+                            ComplexDelayLine& outFadeOutLine = *( outputArray->at( i )->fadeOutComplexLine );
 
         		    FftwBuf* IRPartBuffer = impulseChannel[ j ];
         		    FftwBuf* outputBuffer = outFadeOutLine[ j ];
 
-        		    complex_mul( source->paddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(), source->paddingBuffer->getSSESize() ); 
+        		    complex_mul( source->paddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(),
+                                         source->paddingBuffer->getSSESize() ); 
+
         		} // last partition of IR
                         else if( fwonderConf->doTailCrossfades && ( j == thisIR->getNoPartitions() - 1 ) )
                         {
-                            ComplexDelayLine& outFadeOut2Line = *( ( *outputArray ).at( i )->fadeOut2ComplexLine );
+                            ComplexDelayLine& outFadeOut2Line = *( outputArray->at( i )->fadeOut2ComplexLine );
 
         		    FftwBuf* IRPartBuffer = impulseChannel [ j ];
         		    FftwBuf* outputBuffer = outFadeOut2Line[ j ];
 
-        		    complex_mul( source->paddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(), source->paddingBuffer->getSSESize() ); 
+        		    complex_mul( source->paddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(),
+                                         source->paddingBuffer->getSSESize() ); 
         		} 
                         else
                         {
-                            ComplexDelayLine&  outLine = *( ( *outputArray ).at( i )->complexLine );
+                            ComplexDelayLine&  outLine = *( outputArray->at( i )->complexLine );
 
         		    FftwBuf* IRPartBuffer = impulseChannel[ j ];
         		    FftwBuf* outputBuffer = outLine       [ j ];
 
-        		    complex_mul( source->paddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(), source->paddingBuffer->getSSESize() ); 
-        		}
+        		    complex_mul( source->paddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(),
+                                         source->paddingBuffer->getSSESize() ); 
+                        }
         	    }
         	}
             }
@@ -391,8 +405,8 @@ int process( jack_nframes_t nframes, void* arg )
                 for( int i = 0; i < thisIR->getNoChannels(); ++i ) 
                 {
                     ImpulseResponseChannel& impulseChannel = thisIR->getChannel( i );
-                    ComplexDelayLine&       outLine	   = *( ( *outputArray ).at( i )->tailComplexLine );
-                    ComplexDelayLine&       outFadeInLine  = *( ( *outputArray ).at( i )->tailFadeInComplexLine );
+                    ComplexDelayLine&       outLine	   = *( outputArray->at( i )->tailComplexLine );
+                    ComplexDelayLine&       outFadeInLine  = *( outputArray->at( i )->tailFadeInComplexLine );
 
                     int partsToCompute          = thisIR->getNoPartitions() - thisIR->getFirstPartition();
                     int periodsAvail            = fwonderConf->tailPartitionSize / nframes;
@@ -410,13 +424,15 @@ int process( jack_nframes_t nframes, void* arg )
                         {
                             FftwBuf* IRPartBuffer = impulseChannel[ j ];
                             FftwBuf* outputBuffer = outFadeInLine [ j - 2 ];
-                            complex_mul( source->tailPaddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(), source->tailPaddingBuffer->getSSESize() ); 
+                            complex_mul( source->tailPaddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(),
+                                         source->tailPaddingBuffer->getSSESize() ); 
                         }
                         else 
                         {
                             FftwBuf* IRPartBuffer = impulseChannel[ j ];
                             FftwBuf* outputBuffer = outLine       [ j - 2 ];
-                            complex_mul( source->tailPaddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(), source->tailPaddingBuffer->getSSESize() ); 
+                            complex_mul( source->tailPaddingBuffer->getSamples(), IRPartBuffer->getSamples(), outputBuffer->getSamples(),
+                                         source->tailPaddingBuffer->getSSESize() ); 
                         }
                     }
                 }
@@ -439,8 +455,9 @@ int process( jack_nframes_t nframes, void* arg )
             FftwBuf*          outBuffer = ( *outLine )[ 0 ];
 
             outBuffer->ifft();
+
             outputLine->accumulateAt( 0, outBuffer->getSamples(), outBuffer->getRealSize() );
-            ( *outLine ).clearCurrentBufferAndAdvance();
+            outLine->clearCurrentBufferAndAdvance();
         }
 
         if( fwonderConf->doCrossfades )
@@ -519,7 +536,6 @@ int process( jack_nframes_t nframes, void* arg )
         // get the resulting samples from the delayline out to JACK
         float* outputBuffer = ( float* ) ( *outputIt )->outputPort->getBuffer( nframes );
         outputLine->getAndClearAndAdvance( outputBuffer, nframes );
-
     }
     
     ++processingBlockCounter;
@@ -583,20 +599,17 @@ void exitCleanupFunction()
         delete realtimeCommandEngine;
         realtimeCommandEngine = NULL;
     }
-    //if( sourceArray )
-    //{
-    //    cerr << "delete sourceArray" << endl;
-    //    delete sourceArray;
-    //    sourceArray = NULL;
-    //    cerr << "sourceArray deleted" << endl;
-    //}
-    //if( outputArray )
-    //{
-    //    cerr << "delete outputArray" << endl;
-    //    delete outputArray;
-    //    outputArray = NULL;
-    //    cerr << "outputArray deleted" << endl;
-    //}
+    if( sourceArray )
+    {
+        //XXX: can cause a segfault, check cleanup order, something is not threadsafe
+        //delete sourceArray;
+        //sourceArray = NULL;
+    }
+    if( outputArray )
+    {
+         //delete outputArray;
+         //outputArray = NULL;
+    }
     if( jackClient )
     {
         delete jackClient;
@@ -673,8 +686,10 @@ int main( int argc, char** argv )
         maxIRLength += jackClient->getBufferSize();
     
     // create in- and outputs
-    sourceArray = new SourceArray( fwonderConf->noSources, jackClient->getBufferSize(), maxIRLength, fwonderConf->tailPartitionSize, fwonderConf->maxTailLength );
-    outputArray = new OutputArray( fwonderConf->noOutputs, jackClient->getBufferSize(), maxIRLength, fwonderConf->tailPartitionSize, fwonderConf->maxTailLength );
+    sourceArray = new SourceArray( fwonderConf->noSources, jackClient->getBufferSize(), maxIRLength, 
+                                   fwonderConf->tailPartitionSize, fwonderConf->maxTailLength );
+    outputArray = new OutputArray( fwonderConf->noOutputs, jackClient->getBufferSize(), maxIRLength,
+                                   fwonderConf->tailPartitionSize, fwonderConf->maxTailLength );
 
     // create impulse response manager in own thread
     if( pthread_create( &managerThread, NULL, manageIRCache, NULL ) )
@@ -731,4 +746,4 @@ int main( int argc, char** argv )
     exitCleanupFunction();
     
     return 0;
-}
+} 
