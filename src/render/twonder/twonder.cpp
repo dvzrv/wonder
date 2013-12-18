@@ -46,7 +46,8 @@
 #include "jackppclient.h"
 #include "rtcommandengine.h"
 #include "oscin.h"
-#include "timestamp.h"
+#include <timestamp.h>
+#include <time.h>
 
 #include <unistd.h>
 #include <sys/types.h>
