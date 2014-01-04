@@ -190,7 +190,6 @@ opts.AddVariables(
 includePath = 'src/include'
 
 # put all objectfiles in directory obj/
-#BuildDir( 'obj', 'src', duplicate=0 )
 VariantDir( 'obj', 'src', duplicate=0 )
 
 env = Environment(options = opts,
@@ -257,7 +256,8 @@ print env['arch']
 # march=native requires gcc 4.3x,
 # if you're using gcc version earlier than  4.3 please use one of the disabled lines  
 if env['build'] == 'release':
-    env.Append(CCFLAGS = '-O3 -msse -msse2 -msse3 -mfpmath=sse')
+#    env.Append(CCFLAGS = '-O3 -msse -msse2 -msse3 -mfpmath=sse')
+    env.Append(CCFLAGS = '-O3 -msse -msse2 -msse3 -mfpmath=sse -std=c++11') 
     if PLATFORM == 'linux': # somewhat of a hack, but osx still ships with an old gcc
        env.Append(CCFLAGS = '-march=native')
     env.Append(CPPDEFINES = 'NDEBUG')
