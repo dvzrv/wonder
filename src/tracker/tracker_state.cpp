@@ -41,6 +41,10 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
+#include <unistd.>
+#include <sys/types.h>
+#include <sys/stat.h> 
+
 
 using namespace std;
 
