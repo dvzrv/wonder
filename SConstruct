@@ -190,7 +190,8 @@ opts.AddVariables(
 includePath = 'src/include'
 
 # put all objectfiles in directory obj/
-BuildDir( 'obj', 'src', duplicate=0 )
+#BuildDir( 'obj', 'src', duplicate=0 )
+VariantDir( 'obj', 'src', duplicate=0 )
 
 env = Environment(options = opts,
                   ENV     = createEnvironment('PATH', 'PKG_CONFIG_PATH'),
