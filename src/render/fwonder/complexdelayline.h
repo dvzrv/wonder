@@ -30,6 +30,7 @@
 #define COMPLEXDELAYLINE_H
 
 #include <vector>
+#include <cstring>
 
 class FftwBuf;
 
