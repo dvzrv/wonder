@@ -245,7 +245,7 @@ else:
 
 # Compiler arguments
 env.Append(CCFLAGS = '-Wall')
-env.Append(LINKFLAGS = '-lglut -lz')
+env.Append(LINKFLAGS = '-lglut -lz -ldl')
 
 # set debug flags if necessary
 if env['build'] == 'debug':
