@@ -1,31 +1,31 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
- *                                                                                   *
- *  WONDER - Wave field synthesis Of New Dimensions of Electronic music in Realtime  *
- *  http://swonder.sourceforge.net                                                   *
- *                                                                                   *
- *  Torben Hohn, Eddie Mond, Marije Baalman                                          *
- *                                                                                   *
- *  Technische Universität Berlin, Germany                                           *
- *  Audio Communication Group                                                        *
- *  www.ak.tu-berlin.de                                                              *
- *  Copyright 2006-2008                                                              *
- *                                                                                   *
- *                                                                                   *
- *  This program is free software; you can redistribute it and/or modify             *
- *  it under the terms of the GNU General Public License as published by             *
- *  the Free Software Foundation; either version 2 of the License, or                *
- *  (at your option) any later version.                                              *
- *                                                                                   *
- *  This program is distributed in the hope that it will be useful,                  *
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of                   *
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                    *
- *  GNU General Public License for more details.                                     *
- *                                                                                   *
- *  You should have received a copy of the GNU General Public License                *
- *  along with this program; if not, write to the Free Software                      *
- *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.       *
- *                                                                                   *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+  /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+   *                                                                                   *
+   *  WONDER - Wave field synthesis Of New Dimensions of Electronic music in Realtime  *
+   *  http://swonder.sourceforge.net                                                   *
+   *                                                                                   *
+   *  Torben Hohn, Eddie Mond, Marije Baalman                                          *
+   *                                                                                   *
+   *  Technische Universität Berlin, Germany                                           *
+   *  Audio Communication Group                                                        *
+   *  www.ak.tu-berlin.de                                                              *
+   *  Copyright 2006-2008                                                              *
+   *                                                                                   *
+   *                                                                                   *
+   *  This program is free software; you can redistribute it and/or modify             *
+   *  it under the terms of the GNU General Public License as published by             *
+   *  the Free Software Foundation; either version 2 of the License, or                *
+   *  (at your option) any later version.                                              *
+   *                                                                                   *
+   *  This program is distributed in the hope that it will be useful,                  *
+   *  but WITHOUT ANY WARRANTY; without even the implied warranty of                   *
+   *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                    *
+   *  GNU General Public License for more details.                                     *
+   *                                                                                   *
+   *  You should have received a copy of the GNU General Public License                *
+   *  along with this program; if not, write to the Free Software                      *
+   *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.       *
+   *                                                                                   *
+   * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <iostream>
 #include <iomanip>
@@ -242,7 +242,7 @@ RTCommandEngine* realtimeCommandEngine;
 class MoveCommand : public Command
 {
 public:
-        MoveCommand( Vector2D& v, int id = 0, TimeStamp timestamp = 0 , int durationInSamples = 10240 ) : Command ( timestamp )
+        MoveCommand( Vector2D& v, int id = 0, TimeStamp timestamp = 0.0f , int durationInSamples = 10240 ) : Command ( timestamp )
         { 
 	    destination = v;
 	    sourceId    = id; 
@@ -286,7 +286,7 @@ void MoveCommand::execute()
 class AngleCommand : public Command
 {
 public:
-        AngleCommand( float af, int id = 0, TimeStamp timestamp = 0, int durationInSamples = 10240 ): Command ( timestamp )
+        AngleCommand( float af, int id = 0, TimeStamp timestamp = 0.0f, int durationInSamples = 10240 ): Command ( timestamp )
         {
 	    angle     = af;
 	    sourceId  = id; 
@@ -327,7 +327,7 @@ void AngleCommand::execute()
 class TypeChangeCommand : public Command 
 {
 public:
-        TypeChangeCommand( int id, int type, TimeStamp ts = 0 );
+        TypeChangeCommand( int id, int type, TimeStamp ts = 0.0f );
         ~TypeChangeCommand();
 
         void execute();
@@ -395,7 +395,7 @@ TypeChangeCommand::~TypeChangeCommand()
 class DopplerChangeCommand : public Command 
 {
 public:
-        DopplerChangeCommand( int id, bool dopplerOn, TimeStamp ts = 0 );
+        DopplerChangeCommand( int id, bool dopplerOn, TimeStamp ts = 0.0f );
 
         void execute();
 
