@@ -177,7 +177,7 @@ opts.AddVariables(
     BoolVariable('bas',         'Set to 1 to build all binaural synthesis related targets',   0),
     BoolVariable('all',         'Set to 1 to build the all the targets',                      0),
     EnumVariable('build',       'Set the build version',                 'release', allowed_values=('debug', 'release'), ignorecase=2),
-    PathVariable('installto',   'Set the installation directory',        '/usr/local'),
+    PathVariable('installto',   'Set the installation directory',        '/usr'),
     ('arch', 'Set the target architecture', 'native' )
 )
 
